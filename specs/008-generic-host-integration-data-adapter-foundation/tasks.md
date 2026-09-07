@@ -21,35 +21,50 @@
 **Dependencies**: None.  
 **Independent test**: Existing focused, public-contract, and deterministic mock suites pass unchanged.
 
-- [ ] T001 [VERIFY] Re-run and record the focused Feature 008 baseline against `test/unit/page-context-mapper.spec.ts`, `test/unit/tool-registry.service.spec.ts`, `test/unit/tool-permission-precheck.service.spec.ts`, `test/unit/assistant-readonly-runtime.service.spec.ts`, `test/unit/mock-connector-adapter.spec.ts`, `test/unit/evidence-ref.service.spec.ts`, `test/integration/authorized-tool-execution.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`, and `test/contract/gateway-internal-identity.contract.spec.ts`.
+- [x] T001 [VERIFY] Re-run and record the focused Feature 008 baseline against `test/unit/page-context-mapper.spec.ts`, `test/unit/tool-registry.service.spec.ts`, `test/unit/tool-permission-precheck.service.spec.ts`, `test/unit/assistant-readonly-runtime.service.spec.ts`, `test/unit/mock-connector-adapter.spec.ts`, `test/unit/evidence-ref.service.spec.ts`, `test/integration/authorized-tool-execution.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`, and `test/contract/gateway-internal-identity.contract.spec.ts`.
   - Files: `specs/008-generic-host-integration-data-adapter-foundation/tasks.md` for execution evidence only.
   - Depends on: none.
   - Validation: Run the nine files with `npm run test -- --runInBand`; confirm 9 suites and 43 tests pass and record the existing `ts-jest` `allowJs` warning as informational.
   - Guard: Do not change production code, tests, configuration, or the warning while capturing baseline evidence.
 
-- [ ] T002 [VERIFY] [P] Verify public session, message/SSE, and Gateway identity guards in `test/contract/assistant-sessions.contract.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`, and `test/contract/gateway-internal-identity.contract.spec.ts`.
+- [x] T002 [VERIFY] [P] Verify public session, message/SSE, and Gateway identity guards in `test/contract/assistant-sessions.contract.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`, and `test/contract/gateway-internal-identity.contract.spec.ts`.
   - Files: The three listed contract suites; no edits expected.
   - Depends on: T001.
   - Validation: Run `npm run test:contract -- --runInBand` with the three file paths and record the passing contract baseline.
   - Guard: Do not approve a new endpoint, request mode, SSE event shape, Gateway authority, or SDK-visible contract.
 
-- [ ] T003 [VERIFY] [P] Verify feedback and approval compatibility in `test/contract/feedback.contract.spec.ts` and `test/contract/approval-requests.contract.spec.ts`.
+- [x] T003 [VERIFY] [P] Verify feedback and approval compatibility in `test/contract/feedback.contract.spec.ts` and `test/contract/approval-requests.contract.spec.ts`.
   - Files: The two listed contract suites; no edits expected.
   - Depends on: T001.
   - Validation: Run `npm run test:contract -- --runInBand` with both file paths.
   - Guard: Do not redesign feedback, approval, review, or human-intervention behavior.
 
-- [ ] T004 [VERIFY] [P] Capture deterministic mock, ToolCall, permission, EvidenceRef, answer, and failure behavior in `test/unit/assistant-readonly-runtime.service.spec.ts`, `test/unit/mock-connector-adapter.spec.ts`, `test/unit/evidence-ref.service.spec.ts`, `test/unit/answer-decision.service.spec.ts`, `test/integration/tool-permission-denied.spec.ts`, `test/integration/authorized-evidence-answer.spec.ts`, and `test/integration/tool-failure-safe-response.spec.ts`.
+- [x] T004 [VERIFY] [P] Capture deterministic mock, ToolCall, permission, EvidenceRef, answer, and failure behavior in `test/unit/assistant-readonly-runtime.service.spec.ts`, `test/unit/mock-connector-adapter.spec.ts`, `test/unit/evidence-ref.service.spec.ts`, `test/unit/answer-decision.service.spec.ts`, `test/integration/tool-permission-denied.spec.ts`, `test/integration/authorized-evidence-answer.spec.ts`, and `test/integration/tool-failure-safe-response.spec.ts`.
   - Files: The seven listed existing suites; no edits expected.
   - Depends on: T001.
   - Validation: Run `npm run test -- --runInBand` with the listed file paths and retain expected blocked/started/completed/failed and no-answer behavior.
   - Guard: Do not alter fixtures or expectations to manufacture a passing baseline.
 
-- [ ] T005 [VERIFY] Record the Phase 0 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+- [x] T005 [VERIFY] Record the Phase 0 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: `specs/008-generic-host-integration-data-adapter-foundation/tasks.md` evidence only.
   - Depends on: T002, T003, T004.
   - Validation: Confirm all Phase 0 commands pass and the focused count remains 9 suites/43 tests.
   - Guard: This checkpoint implements no behavior and must report `BASELINE_CAPTURED=YES`, `PUBLIC_CONTRACT_BASELINE_CAPTURED=YES`, and `MOCK_RUNTIME_BASELINE_CAPTURED=YES`.
+
+### Phase 0 Execution Evidence — 2026-09-07
+
+- T001 PASS — exact focused command completed with 9/9 suites and 43/43 tests passing, 0 snapshots; the existing `ts-jest` `allowJs` warning was present and remained informational.
+- T002 PASS — session, message/SSE, and Gateway identity contract command completed with 3/3 suites and 25/25 tests passing, 0 snapshots; no contract or snapshot was updated.
+- T003 PASS — feedback and approval contract command completed with 2/2 suites and 5/5 tests passing, 0 snapshots; no flow or expectation was changed.
+- T004 PASS — deterministic mock, ToolCall, permission, EvidenceRef, AnswerDecision, and safe-failure command completed with 7/7 suites and 23/23 tests passing, 0 snapshots; no fixture or expectation was changed.
+- Pre-run and post-test Git status/diff were clean. Phase 0 changed no production code, tests, Prisma files, seeds, package configuration, or approved `spec.md`, `design.md`, or `plan.md`; this evidence and the T001–T005 checkboxes are the only Phase 0 artifact update.
+- T006 remains unstarted.
+
+```text
+BASELINE_CAPTURED=YES
+PUBLIC_CONTRACT_BASELINE_CAPTURED=YES
+MOCK_RUNTIME_BASELINE_CAPTURED=YES
+```
 
 ## Phase 1 — Host Context and Transient Boundary
 
@@ -81,17 +96,17 @@
   - Validation: Make T008 pass; run `npm run typecheck` and the PageContext unit suites.
   - Guard: Accept `connectorContextRef` only as compatible optional wire input; never include it in `NormalizedPageContext` or make raw records necessary for business answers.
 
-- [ ] T010 [RED] [US2] Add failing ingress/orchestration tests for immediate reference extraction, session discard, runtime-only message passage, and planner/query-understanding exclusion in `test/unit/assistant-message.service.spec.ts` and proposed `test/integration/feature008-transient-boundary.spec.ts`.
-  - Files: `test/unit/assistant-message.service.spec.ts` (new), `test/integration/feature008-transient-boundary.spec.ts` (new).
+- [ ] T010 [RED] [US2] Add failing ingress/orchestration and normalized-consumer tests for immediate reference extraction, session discard, runtime-only message passage, and planner/query-understanding exclusion.
+  - Files: `test/unit/assistant-message.service.spec.ts` (new), `test/integration/feature008-transient-boundary.spec.ts` (new), proposed `test/unit/query-understanding.service.spec.ts`, and existing `test/unit/assistant-session.service.spec.ts`, `test/unit/assistant-message.repository.spec.ts`, `test/unit/assistant-context-state.service.spec.ts`, `test/unit/assistant-planning.service.spec.ts`, `test/unit/query-understanding-placeholder.spec.ts`, `test/unit/deixis-resolution.spec.ts`, `test/integration/action-draft-confirmation.spec.ts`, `test/integration/approval-request-flow.spec.ts`, and `test/integration/escalation-request-flow.spec.ts`.
   - Depends on: T009.
-  - Validation: Run both files with `npm run test -- --runInBand`; assert extraction precedes repository, context-state, planning, audit, and logging calls.
-  - Guard: Do not create a second request mode or pass `TransientConnectorContext` to planning, QueryTaskDecomposer, ToolRegistry, ExecutionPlan, EvidenceRef, or grounded-answer inputs.
+  - Validation: Run the listed files with `npm run test -- --runInBand`; assert extraction precedes repository, context-state, planning, audit, and logging calls, and observe RED because session creation, message persistence, context state, planning/query understanding, entity/deixis readers, and approval/action/escalation creation inputs still accept broad identity, wire PageContext, or arbitrary JSON instead of the required trusted/normalized inputs.
+  - Guard: Do not create a second request mode, pass `TransientConnectorContext` to planning, QueryTaskDecomposer, ToolRegistry, ExecutionPlan, EvidenceRef, or grounded-answer inputs, or test Phase 3 candidate-operation shape, DataAdapter, registry, or projection behavior.
 
-- [ ] T011 [GREEN] [US2] Wire separated trusted, normalized, and transient inputs through `src/assistant/assistant.controller.ts`, `src/assistant/message/assistant-message.types.ts`, `src/assistant/message/assistant-message.service.ts`, `src/assistant/runtime/runtime.types.ts`, and `src/assistant/assistant.module.ts`.
-  - Files: The five listed existing files.
+- [ ] T011 [GREEN] [US2] Wire separated trusted, normalized, and transient inputs through the Assistant ingress and every current Phase 1 PageContext consumer.
+  - Files: `src/assistant/assistant.controller.ts`, `src/assistant/message/assistant-message.types.ts`, `src/assistant/message/assistant-message.service.ts`, `src/assistant/runtime/runtime.types.ts`, `src/assistant/assistant.module.ts`, `src/assistant/session/assistant-session.types.ts`, `src/assistant/session/assistant-session.service.ts`, `src/assistant/message/assistant-message.repository.ts`, `src/assistant/context/assistant-context-state.types.ts`, `src/assistant/planning/assistant-planning.types.ts`, `src/assistant/planning/assistant-planning.service.ts`, `src/query-understanding/query-understanding.types.ts`, `src/query-understanding/query-understanding.service.ts`, `src/query-understanding/entity-extractor.ts`, `src/query-understanding/deixis-resolver.ts`, `src/approvals/action-draft.types.ts`, `src/approvals/approval-request.types.ts`, and `src/approvals/escalation-request.types.ts`.
   - Depends on: T010.
-  - Validation: Make T010 pass; run targeted unit/integration tests and `npm run typecheck`.
-  - Guard: Session creation discards transient context; message handling passes it only to readonly runtime memory and persists normalized PageContext only.
+  - Validation: Make T010 pass; run targeted unit/integration tests and `npm run typecheck`; prove verified identity becomes `HostIntegrationContext`, wire PageContext becomes `NormalizedPageContext`, and only the message runtime receives `TransientConnectorContext` separately in memory.
+  - Guard: Session creation discards transient context; session, message persistence, context state, planning, query understanding, entity/deixis readers, and approval persistence-producing inputs receive normalized context only. Approval behavior/public contracts remain unchanged. `PHASE3_CANDIDATE_OPERATION_RESTRUCTURING_INCLUDED=NO`: do not add `{ key, arguments, reason }`, legacy-operation handling, canonical ToolDefinition operation derivation, structured input validation, or ToolDefinition output policy.
 
 - [ ] T012 [RED] [US2] Expand prohibited-surface coverage in `test/integration/feature008-transient-boundary.spec.ts` and `test/integration/secret-redaction.spec.ts`.
   - Files: The two listed integration suites.
