@@ -1,4 +1,5 @@
 import { RiskLevel, ToolOperation } from '../generated/prisma/enums';
+import type { ValidatedNamedOperation } from '../connectors/data-adapter.interface';
 
 export type RegisteredToolOperation = ToolOperation;
 
@@ -62,4 +63,55 @@ export type ToolValidationResult =
       valid: false;
       deniedReason: 'schema_invalid';
       schemaErrorReason: string;
+    };
+
+export interface SafeToolInputSummary {
+  readonly canonicalToolKey: string;
+  readonly schemaVersion: string;
+  readonly argumentKeys: readonly string[];
+  readonly argumentCount: number;
+}
+
+export type NamedOperationValidationResult =
+  | {
+      valid: true;
+      operation: ValidatedNamedOperation;
+      safeInputSummary: SafeToolInputSummary;
+    }
+  | {
+      valid: false;
+      deniedReason: 'schema_invalid';
+      schemaErrorReason: string;
+    };
+
+export interface ToolResultPermissionMask {
+  readonly fieldPath: string;
+  readonly requiredPermissionScopes: readonly string[];
+  readonly action: 'omit' | 'redact';
+}
+
+export interface ToolResultPolicyLimits {
+  readonly maxDepth: number;
+  readonly maxItems: number;
+  readonly maxStringLength: number;
+  readonly maxTotalBytes: number;
+}
+
+export interface ToolResultPolicyV1 {
+  readonly version: '1';
+  readonly allowedFieldPaths: readonly string[];
+  readonly deniedFieldPaths: readonly string[];
+  readonly permissionMasks: readonly ToolResultPermissionMask[];
+  readonly limits: ToolResultPolicyLimits;
+  readonly evidenceSafeProvenanceFields: readonly string[];
+}
+
+export type ToolResultPolicyResolution =
+  | {
+      readonly allowed: true;
+      readonly policy: ToolResultPolicyV1;
+    }
+  | {
+      readonly allowed: false;
+      readonly reason: 'missing_result_policy' | 'invalid_result_policy' | 'unsupported_result_policy_version';
     };

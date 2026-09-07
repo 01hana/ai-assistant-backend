@@ -27,6 +27,12 @@ export interface AssistantPlanningResult {
   decision: ExecutionDecision;
 }
 
+export interface PlannedOperationCandidate {
+  key: string;
+  arguments: Record<string, unknown>;
+  reason: string;
+}
+
 export interface PersistedExecutionPlan {
   id: string;
   customerId: string;

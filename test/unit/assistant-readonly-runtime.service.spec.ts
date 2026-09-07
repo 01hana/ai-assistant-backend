@@ -1,5 +1,6 @@
 import { RiskLevel, ExecutionDecision, ToolCallStatus, ToolExecutionStatus, ToolOperation } from '../../src/generated/prisma/enums';
 import { AssistantReadonlyRuntimeService } from '../../src/assistant/runtime/assistant-readonly-runtime.service';
+import { AssistantReadonlyRuntimeInput } from '../../src/assistant/runtime/runtime.types';
 import { ToolCallService } from '../../src/assistant/runtime/tool-call.service';
 import { createCustomerScopeFromIdentityContext } from '../../src/identity/customer-scope.factory';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -23,10 +24,36 @@ describe('AssistantReadonlyRuntimeService', () => {
       completeToolCall
     });
 
-    const result = await service.execute(runtimeInput());
+    const input = runtimeInput();
+    input.executionPlan.candidateTools = [
+      {
+        key: 'mock.orders.status.lookup',
+        arguments: { entityId: 'SO-10002' },
+        reason: 'order status query',
+        operation: 'mock.orders.cancel'
+      }
+    ];
+    const result = await service.execute(input);
 
-    expect(startToolCall).toHaveBeenCalledWith(expect.objectContaining({ toolName: 'mock.orders.status.lookup' }));
-    expect(connectorExecute).toHaveBeenCalledWith(expect.objectContaining({ toolKey: 'mock.orders.status.lookup' }));
+    expect(startToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolName: 'mock.orders.status.lookup',
+        safeInputSummary: {
+          canonicalToolKey: 'mock.orders.status.lookup',
+          schemaVersion: '1.0.0',
+          argumentKeys: ['entityId'],
+          argumentCount: 1
+        }
+      })
+    );
+    expect(connectorExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolKey: 'mock.orders.status.lookup',
+        arguments: { entityId: 'SO-10002' }
+      })
+    );
+    expect(JSON.stringify(startToolCall.mock.calls)).not.toContain('SO-10002');
+    expect(JSON.stringify(startToolCall.mock.calls)).not.toContain('mock.orders.cancel');
     expect(completeToolCall).toHaveBeenCalledWith(
       expect.objectContaining({
         toolCallId: 'tool-call-001',
@@ -90,6 +117,39 @@ describe('AssistantReadonlyRuntimeService', () => {
     expect(blockToolCall).toHaveBeenCalledWith(expect.objectContaining({ deniedReason: 'schema_invalid' }));
     expect(result.toolLifecycle).toBe('blocked');
     expect(result.deniedReason).toBe('schema_invalid');
+  });
+
+  it('blocks malformed candidate arguments before ToolCall start or connector execution', async () => {
+    const connectorExecute = jest.fn();
+    const startToolCall = jest.fn();
+    const blockToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-blocked-unsafe' } });
+    const service = createRuntimeService({
+      validation: {
+        valid: false,
+        deniedReason: 'schema_invalid',
+        schemaErrorReason: 'prohibited_argument'
+      },
+      connectorExecute,
+      startToolCall,
+      blockToolCall
+    });
+    const input = runtimeInput();
+    input.executionPlan.candidateTools = [
+      {
+        key: 'mock.orders.status.lookup',
+        arguments: { entityId: 'SO-10001', connectorContextRef: 'ccr_runtime_secret' },
+        reason: 'unsafe candidate',
+        operation: 'delete'
+      }
+    ];
+
+    const result = await service.execute(input);
+
+    expect(startToolCall).not.toHaveBeenCalled();
+    expect(connectorExecute).not.toHaveBeenCalled();
+    expect(blockToolCall).toHaveBeenCalledWith(expect.objectContaining({ deniedReason: 'schema_invalid' }));
+    expect(JSON.stringify(blockToolCall.mock.calls)).not.toContain('ccr_runtime_secret');
+    expect(result.toolLifecycle).toBe('blocked');
   });
 
   it('blocks the tool call and does not call the connector when permission pre-check denies execution', async () => {
@@ -199,7 +259,13 @@ describe('ToolCallService', () => {
       toolVersion: '1.0.0',
       riskLevel: RiskLevel.low,
       entityId: 'SO-10001',
-      visibleFields: ['status']
+      visibleFields: ['status'],
+      safeInputSummary: {
+        canonicalToolKey: 'mock.orders.status.lookup',
+        schemaVersion: '1.0.0',
+        argumentKeys: ['entityId'],
+        argumentCount: 1
+      }
     });
 
     await service.completeToolCall({
@@ -251,12 +317,15 @@ describe('ToolCallService', () => {
           status: ToolCallStatus.pending,
           executionStatus: ToolExecutionStatus.in_progress,
           inputSummary: {
-            entityId: 'SO-10001',
-            visibleFieldCount: 1
+            canonicalToolKey: 'mock.orders.status.lookup',
+            schemaVersion: '1.0.0',
+            argumentKeys: ['entityId'],
+            argumentCount: 1
           }
         })
       })
     );
+    expect(JSON.stringify(create.mock.calls[0])).not.toContain('SO-10001');
     expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -338,7 +407,27 @@ function createRuntimeService(overrides?: {
     {
       resolveToolForCustomer: jest.fn().mockResolvedValue(overrides?.registryResult ?? { resolved: { tool: registeredTool(), requiredRoles: [], requiredPermissionScopes: [] } }),
       isExecutableReadOnly: jest.fn().mockReturnValue(true),
-      validateInput: jest.fn().mockReturnValue(overrides?.validation ?? { valid: true })
+      validateInput: jest.fn().mockReturnValue(overrides?.validation ?? { valid: true }),
+      validateNamedOperation: jest.fn((tool, candidate) => {
+        if (overrides?.validation && !overrides.validation.valid) {
+          return overrides.validation;
+        }
+        const argumentsValue = candidate?.arguments ?? {};
+        return {
+          valid: true,
+          operation: {
+            canonicalToolKey: tool.key,
+            schemaVersion: tool.version,
+            arguments: argumentsValue
+          },
+          safeInputSummary: {
+            canonicalToolKey: tool.key,
+            schemaVersion: tool.version,
+            argumentKeys: Object.keys(argumentsValue).sort(),
+            argumentCount: Object.keys(argumentsValue).length
+          }
+        };
+      })
     } as never,
     {
       execute:
@@ -396,7 +485,7 @@ function registeredTool(): RegisteredToolDefinition {
   };
 }
 
-function runtimeInput() {
+function runtimeInput(): AssistantReadonlyRuntimeInput {
   const identity = identityContext();
 
   return {
@@ -424,7 +513,13 @@ function runtimeInput() {
       messageId: 'message-user-001',
       taskType: 'order_status_lookup',
       requiredEvidence: [],
-      candidateTools: [{ key: 'mock.orders.status.lookup', reason: 'order status query' }],
+      candidateTools: [
+        {
+          key: 'mock.orders.status.lookup',
+          arguments: { entityId: 'SO-10001' },
+          reason: 'order status query'
+        }
+      ],
       permissionChecks: [],
       riskAssessment: RiskLevel.low,
       clarificationNeeds: null,

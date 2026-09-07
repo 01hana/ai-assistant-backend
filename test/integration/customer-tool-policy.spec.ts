@@ -3,6 +3,8 @@ import request = require('supertest');
 import { createAuthorizedInternalIdentityHeaders, createUs1TestAppWithState } from '../support/us1-test-app.helper';
 import { createInternalIdentityJwtFixture, TEST_BACKEND_AUDIENCE, TEST_GATEWAY_ISSUER } from '../support/internal-identity-jwt.helper';
 import { CUSTOMER_TOOL_PHASE6 } from '../support/customer-tool-phase6-fixtures';
+import { ToolRegistryService } from '../../src/tools/tool-registry.service';
+import { CUSTOMER_SCOPE_FIXTURES, createCustomerScopeFixtureScope } from '../support/customer-scope-fixtures';
 
 const describeUs3 = process.env.RUN_CUSTOMER_US3_TESTS === 'true' ? describe : describe.skip;
 
@@ -69,3 +71,79 @@ function snapshotDeniedWork(state: Awaited<ReturnType<typeof createUs1TestAppWit
     successfulToolCalls: state.toolCalls.filter((item) => item.status === 'success').length
   };
 }
+
+describe('Feature 008 ToolDefinition result-policy authority', () => {
+  let app: INestApplication;
+  let state: Awaited<ReturnType<typeof createUs1TestAppWithState>>['state'];
+
+  beforeAll(async () => {
+    ({ app, state } = await createUs1TestAppWithState());
+  });
+
+  afterAll(async () => app.close());
+
+  it('resolves Customer policy first and parses release policy only from the resolved ToolDefinition', async () => {
+    const definition = state.toolDefinitions.find((tool) => tool.name === 'mock.orders.status.lookup');
+    if (!definition) throw new Error('Mock order ToolDefinition fixture is missing.');
+    definition.outputSchema = {
+      type: 'object',
+      required: ['orderId', 'status'],
+      properties: {
+        orderId: { type: 'string' },
+        status: { type: 'string' },
+        organizationId: { type: 'string' }
+      },
+      'x-assistant-result-policy': {
+        version: '1',
+        allowedFieldPaths: ['orderId', 'status'],
+        deniedFieldPaths: ['organizationId'],
+        permissionMasks: [],
+        limits: { maxDepth: 4, maxItems: 100, maxStringLength: 512, maxTotalBytes: 16384 },
+        evidenceSafeProvenanceFields: ['orderId']
+      }
+    };
+    const registry = app.get(ToolRegistryService);
+    const resolution = await registry.resolveToolForCustomer(
+      definition.name,
+      createCustomerScopeFixtureScope(CUSTOMER_SCOPE_FIXTURES.customerA)
+    );
+
+    expect(resolution.resolved).toBeDefined();
+    expect(registry.resolveResultPolicy(resolution.resolved!.tool)).toEqual(
+      expect.objectContaining({
+        allowed: true,
+        policy: expect.objectContaining({
+          version: '1',
+          allowedFieldPaths: ['orderId', 'status']
+        })
+      })
+    );
+  });
+
+  it('provides accepted versioned policies for every current mock ToolDefinition fixture', async () => {
+    const registry = app.get(ToolRegistryService);
+    const expectedKeys = [
+      'mock.business-partner.history.lookup',
+      'mock.inventory.availability.lookup',
+      'mock.orders.cancel',
+      'mock.orders.status.lookup',
+      'mock.orders.status.update',
+      'mock.work-orders.progress.lookup'
+    ];
+    const mockDefinitions = state.toolDefinitions
+      .filter((tool) => tool.connectorKey === 'mock')
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    expect(mockDefinitions.map((tool) => tool.name)).toEqual(expectedKeys);
+    for (const definition of mockDefinitions) {
+      const resolved = await registry.resolveRegisteredTool(definition.name);
+      expect(resolved.tool).toBeDefined();
+      expect(registry.resolveResultPolicy(resolved.tool!)).toEqual(
+        expect.objectContaining({
+          allowed: true,
+          policy: expect.objectContaining({ version: '1' })
+        })
+      );
+    }
+  });
+});

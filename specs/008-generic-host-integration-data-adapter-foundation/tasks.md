@@ -252,59 +252,93 @@ T022_STARTED=NO
 **Dependencies**: T021.  
 **Independent test**: Planner fields cannot redirect operations; validated structured arguments and versioned ToolDefinition policies fail closed when invalid or absent.
 
-- [ ] T022 [RED] [US5] Add failing generic candidate and canonical-operation tests in `test/unit/assistant-planning.service.spec.ts` and proposed `test/unit/query-task-decomposer.spec.ts`.
+- [x] T022 [RED] [US5] Add failing generic candidate and canonical-operation tests in `test/unit/assistant-planning.service.spec.ts` and proposed `test/unit/query-task-decomposer.spec.ts`.
   - Files: The existing planning suite and proposed decomposer suite.
   - Depends on: T021.
   - Validation: Assert persisted candidates are `{ key, arguments, reason }`, a legacy `operation` field is ignored, and canonical identity is re-derived after ToolDefinition resolution.
   - Guard: `PLANNER_OPERATION_AUTHORITY=NO`; exclude connectorContextRef, credentials, adapter keys, endpoints, SQL, paths, query strings, and free-form commands from planned arguments.
 
-- [ ] T023 [GREEN] [US5] Generalize planned candidates in `src/assistant/planning/assistant-planning.types.ts`, `src/assistant/planning/assistant-planning.service.ts`, and `src/query-understanding/query-task-decomposer.ts`.
+- [x] T023 [GREEN] [US5] Generalize planned candidates in `src/assistant/planning/assistant-planning.types.ts`, `src/assistant/planning/assistant-planning.service.ts`, and `src/query-understanding/query-task-decomposer.ts`.
   - Files: The three listed production files.
   - Depends on: T022.
   - Validation: Make T022 pass; rerun `test/integration/query-understanding-persistence.spec.ts` and `npm run typecheck`.
   - Guard: Do not persist an independent operation authority or add new Prisma fields.
 
-- [ ] T024 [RED] [US5] Add failing structured-input and prohibited-command tests in `test/unit/tool-registry.service.spec.ts` and `test/unit/assistant-readonly-runtime.service.spec.ts`.
+- [x] T024 [RED] [US5] Add failing structured-input and prohibited-command tests in `test/unit/tool-registry.service.spec.ts` and `test/unit/assistant-readonly-runtime.service.spec.ts`.
   - Files: The two listed existing unit suites.
   - Depends on: T023.
   - Validation: Cover missing/malformed/excessive arguments, arbitrary or model-generated SQL, URLs, HTTP paths, forwarded queries, commands, Browser operation code, native credentials, and connectorContextRef.
   - Guard: Invalid input must block before registry eligibility, connector invocation, or business-data access.
 
-- [ ] T025 [GREEN] [US5] Implement canonical resolution, structured validation, and pre-start safe input summary in `src/tools/tool-registry.service.ts`, `src/tools/tool-registry.types.ts`, `src/assistant/runtime/assistant-readonly-runtime.service.ts`, and `src/assistant/runtime/tool-call.service.ts`.
+- [x] T025 [GREEN] [US5] Implement canonical resolution, structured validation, and pre-start safe input summary in `src/tools/tool-registry.service.ts`, `src/tools/tool-registry.types.ts`, `src/assistant/runtime/assistant-readonly-runtime.service.ts`, and `src/assistant/runtime/tool-call.service.ts`.
   - Files: The four listed existing files.
   - Depends on: T024.
   - Validation: Make T024 pass; assert validated arguments → input allowlist/redaction/minimization → safe input summary → ToolCall start.
   - Guard: `TOOL_DEFINITION_OPERATION_AUTHORITY=YES`; safe input excludes full arbitrary arguments, unapproved sensitive values, credentials, and transient context.
 
-- [ ] T026 [RED] [US5] Add failing ToolDefinition result-policy tests in `test/unit/tool-registry.service.spec.ts` and `test/integration/customer-tool-policy.spec.ts`.
+- [x] T026 [RED] [US5] Add failing ToolDefinition result-policy tests in `test/unit/tool-registry.service.spec.ts` and `test/integration/customer-tool-policy.spec.ts`.
   - Files: The two listed existing suites.
   - Depends on: T025.
   - Validation: Cover versioned valid policy parsing plus missing/invalid policy default denial through `ToolDefinition.outputSchema`.
   - Guard: Do not add an adapter-owned allowlist, parallel policy registry, database table, or alternate policy source.
 
-- [ ] T027 [GREEN] [US5] Implement trusted ToolDefinition result-policy interpretation in `src/tools/tool-registry.service.ts` and `src/tools/tool-registry.types.ts`.
+- [x] T027 [GREEN] [US5] Implement trusted ToolDefinition result-policy interpretation in `src/tools/tool-registry.service.ts` and `src/tools/tool-registry.types.ts`.
   - Files: The two listed existing production files and only already-approved narrowly participating ToolDefinition contract types if compilation requires them.
   - Depends on: T026.
   - Validation: Make T026 pass by interpreting versioned `ToolDefinition.outputSchema`, validating required policy structure, and returning a typed policy result that the later AdapterResultProjector can consume; missing or malformed policy must default-deny.
   - Guard: `RESULT_POLICY_SINGLE_AUTHORITY=ToolDefinition.outputSchema`; do not implement AdapterResultProjector, seed data, adapter-owned policy, a second policy registry, raw SQL, or a Prisma migration.
 
-- [ ] T028 [DATA] [US5] Provision approved mock result policies in `scripts/seed.ts` and mirror them in `test/support/us1-test-app.helper.ts`.
+- [x] T028 [DATA] [US5] Provision approved mock result policies in `scripts/seed.ts` and mirror them in `test/support/us1-test-app.helper.ts`.
   - Files: The two listed existing files.
   - Depends on: T027.
   - Validation: Provision all current mock operations with policies accepted by T027 through the existing `prisma.toolDefinition.upsert` model and confirm the test fixture mirrors the production definitions.
   - Guard: This task owns policy data only and must not implement or alter policy parsing; no raw SQL, schema edit, migration, new table, credential, Customer endpoint, or second result-policy registry.
 
-- [ ] T029 [VERIFY] [US5] Verify ToolDefinition policy parsing and provisioning using `scripts/seed.ts`, `test/support/us1-test-app.helper.ts`, and `prisma/schema.prisma`.
+- [x] T029 [VERIFY] [US5] Verify ToolDefinition policy parsing and provisioning using `scripts/seed.ts`, `test/support/us1-test-app.helper.ts`, and `prisma/schema.prisma`.
   - Files: The three listed files; schema is inspection-only.
   - Depends on: T028.
   - Validation: Run policy unit/integration suites; compare seed/test fixture policy shape; run `npm run prisma:seed` twice only against a provisioned dev/test database and confirm idempotency.
   - Guard: If no safe database is provisioned, record seed execution as environment-pending rather than targeting production or creating a migration.
 
-- [ ] T030 [VERIFY] [US5] Record the Phase 3 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+- [x] T030 [VERIFY] [US5] Record the Phase 3 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: This task file for evidence; Phase 3 files are validation inputs only.
   - Depends on: T029.
   - Validation: Run Phase 3 suites, `npm run typecheck`, and schema/diff inspection.
   - Guard: Report `STRUCTURED_OPERATION_CONTRACT_READY=YES`, `TOOL_DEFINITION_RESULT_POLICY_READY=YES`, `MOCK_TOOL_POLICY_DATA_READY=YES`, and `PRISMA_SCHEMA_CHANGE_REQUIRED=NO` only when all policies needed for cutover exist.
+
+### Phase 3 T022–T030 Execution Evidence — 2026-09-07
+
+- T022 RED observed with both required suites failing because candidates omitted `arguments` and planning persisted legacy operation, connector authority, SQL, and connector-reference sentinels. T023 GREEN completed with 2/2 suites and 10/10 tests passing; query-understanding persistence and typecheck also passed.
+- T024 RED observed because canonical named-operation validation was absent and ToolCall start lacked a value-free safe input summary. T025 GREEN completed with 2/2 suites and 37/37 tests passing, followed by a passing typecheck. Structured validation covers declared recursive schema types plus the fixed 32-key, depth-4, 100-item, 512-character, and 16-KiB ceilings.
+- T026 RED observed because `ToolRegistryService.resolveResultPolicy` was absent in both the unit and trusted Customer-policy integration paths. T027 GREEN completed with 2/2 suites and 33/33 active tests passing; 6 pre-existing environment-gated tests remained skipped in that narrow run. Missing, malformed, inconsistent, and unsupported-version policies default-deny.
+- T028 DATA completed for all six current Mock ToolDefinitions in the production upsert seed and in-memory test fixture. Every policy uses the version-1 `x-assistant-result-policy` extension, explicitly denies `organizationId`, and has no adapter-, Browser-, or parallel-registry authority.
+- T029 PASS — the configured target was reconfirmed as the healthy local development `assistant_dev` database. `npm run prisma:seed` succeeded twice. Both read-only checks returned exactly six valid Mock policies and the identical SHA-256 fingerprint `48c656dbd8bba243f7b470fc282fb8a3d47937c8b43bb8a324be273a28d057e1`.
+- T030 checkpoint PASS — final Phase 3 unit coverage completed with 4/4 suites and 57/57 tests passing. Query-understanding persistence, fully enabled Customer-policy coverage, and the Phase 1 transient regression completed with 3/3 suites and 11/11 tests passing. Additional authorized, denied, and safe-failure runtime regressions completed with 3/3 suites and 3/3 tests passing.
+- Typecheck, modified-file lint, and `git diff --check` passed. The first integration attempt was blocked only by sandbox `listen EPERM`; the identical permitted rerun passed. Prisma schema/migrations, `.specify/feature.json`, Gateway, identity bridge, SDK, Customer SPA, Feature 009, DataAdapter registry wiring, and the direct Mock runtime dependency remain unchanged. No projector file was created and T031 remains unchecked.
+
+```text
+STRUCTURED_OPERATION_CONTRACT_READY=YES
+PLANNED_CANDIDATE_FIELDS=key,arguments,reason
+PLANNER_OPERATION_AUTHORITY=NO
+TOOL_DEFINITION_OPERATION_AUTHORITY=YES
+STRUCTURED_INPUT_VALIDATION_READY=YES
+INVALID_INPUT_BLOCKS_BEFORE_EXECUTION=YES
+SAFE_INPUT_SUMMARY_READY=YES
+TOOL_DEFINITION_RESULT_POLICY_READY=YES
+RESULT_POLICY_SINGLE_AUTHORITY=ToolDefinition.outputSchema
+MISSING_RESULT_POLICY_DEFAULT_DENY=YES
+INVALID_RESULT_POLICY_DEFAULT_DENY=YES
+MOCK_TOOL_POLICY_DATA_READY=YES
+MOCK_TOOL_POLICY_KEYS=mock.orders.status.lookup,mock.orders.status.update,mock.orders.cancel,mock.work-orders.progress.lookup,mock.inventory.availability.lookup,mock.business-partner.history.lookup
+PRISMA_SCHEMA_CHANGE_REQUIRED=NO
+PRISMA_SEED_EXECUTION=PASS
+PRISMA_SEED_IDEMPOTENCY=PASS
+ADAPTER_RESULT_PROJECTOR_IMPLEMENTED=NO
+PHASE4_IMPLEMENTATION_STARTED=NO
+T031_STARTED=NO
+DIRECT_MOCK_RUNTIME_PATH_STILL_ACTIVE=YES
+ASSISTANT_RUNTIME_REGISTRY_CUTOVER_STARTED=NO
+```
 
 ## Phase 4 — Result Projection and Evidence Boundary
 

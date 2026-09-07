@@ -2581,6 +2581,16 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       resource: 'orders',
       requiredPermissions: ['orders:read'],
       outputRequired: ['orderId', 'status'],
+      outputProperties: {
+        orderId: { type: 'string' },
+        status: { type: 'string' },
+        requestedShipDate: { type: 'string' },
+        committedShipDate: { type: 'string' },
+        lineCount: { type: 'number' },
+        holdReason: { type: 'string' }
+      },
+      outputAllowed: ['orderId', 'status', 'requestedShipDate', 'committedShipDate', 'lineCount', 'holdReason'],
+      evidenceProvenance: ['orderId'],
       baseDate
     }),
     createToolDefinition({
@@ -2591,6 +2601,13 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       operation: ToolOperation.update,
       requiredPermissions: ['orders:update'],
       outputRequired: ['orderId', 'status'],
+      outputProperties: {
+        orderId: { type: 'string' },
+        status: { type: 'string' },
+        sideEffectApplied: { type: 'boolean' }
+      },
+      outputAllowed: ['orderId', 'status', 'sideEffectApplied'],
+      evidenceProvenance: ['orderId'],
       riskLevel: RiskLevel.medium,
       hasSideEffect: true,
       requiresConfirmation: true,
@@ -2604,6 +2621,13 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       operation: ToolOperation.update,
       requiredPermissions: ['orders:approve'],
       outputRequired: ['orderId', 'status'],
+      outputProperties: {
+        orderId: { type: 'string' },
+        status: { type: 'string' },
+        sideEffectApplied: { type: 'boolean' }
+      },
+      outputAllowed: ['orderId', 'status', 'sideEffectApplied'],
+      evidenceProvenance: ['orderId'],
       riskLevel: RiskLevel.high,
       hasSideEffect: true,
       requiresApproval: true,
@@ -2616,6 +2640,25 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       resource: 'work_orders',
       requiredPermissions: ['work-orders:read'],
       outputRequired: ['workOrderId', 'status'],
+      outputProperties: {
+        workOrderId: { type: 'string' },
+        itemSku: { type: 'string' },
+        status: { type: 'string' },
+        plannedQuantity: { type: 'number' },
+        completedQuantity: { type: 'number' },
+        currentOperation: { type: 'string' },
+        estimatedCompletionAt: { type: 'string' }
+      },
+      outputAllowed: [
+        'workOrderId',
+        'itemSku',
+        'status',
+        'plannedQuantity',
+        'completedQuantity',
+        'currentOperation',
+        'estimatedCompletionAt'
+      ],
+      evidenceProvenance: ['workOrderId'],
       baseDate
     }),
     createToolDefinition({
@@ -2625,6 +2668,23 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       resource: 'inventory',
       requiredPermissions: ['inventory:read'],
       outputRequired: ['itemSku', 'availableQuantity'],
+      outputProperties: {
+        itemSku: { type: 'string' },
+        warehouseCode: { type: 'string' },
+        availableQuantity: { type: 'number' },
+        allocatedQuantity: { type: 'number' },
+        incomingQuantity: { type: 'number' },
+        nextReceiptDate: { type: 'string' }
+      },
+      outputAllowed: [
+        'itemSku',
+        'warehouseCode',
+        'availableQuantity',
+        'allocatedQuantity',
+        'incomingQuantity',
+        'nextReceiptDate'
+      ],
+      evidenceProvenance: ['itemSku'],
       baseDate
     }),
     createToolDefinition({
@@ -2634,6 +2694,25 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       resource: 'business_partners',
       requiredPermissions: ['business-partners:read'],
       outputRequired: ['partnerId', 'relationshipStatus'],
+      outputProperties: {
+        partnerId: { type: 'string' },
+        partnerType: { type: 'string' },
+        displayCode: { type: 'string' },
+        relationshipStatus: { type: 'string' },
+        recentActivitySummary: { type: 'string' },
+        openItemCount: { type: 'number' },
+        riskNotes: { type: 'array', minItems: 0, maxItems: 100, items: { type: 'string' } }
+      },
+      outputAllowed: [
+        'partnerId',
+        'partnerType',
+        'displayCode',
+        'relationshipStatus',
+        'recentActivitySummary',
+        'openItemCount',
+        'riskNotes'
+      ],
+      evidenceProvenance: ['partnerId'],
       baseDate
     })
   ];
@@ -2647,6 +2726,9 @@ function createToolDefinition(input: {
   operation?: ToolOperation;
   requiredPermissions: string[];
   outputRequired: string[];
+  outputProperties: Record<string, Record<string, unknown>>;
+  outputAllowed: string[];
+  evidenceProvenance: string[];
   riskLevel?: RiskLevel;
   hasSideEffect?: boolean;
   requiresConfirmation?: boolean;
@@ -2669,7 +2751,24 @@ function createToolDefinition(input: {
     },
     outputSchema: {
       type: 'object',
-      required: input.outputRequired
+      required: input.outputRequired,
+      properties: {
+        ...input.outputProperties,
+        organizationId: { type: 'string' }
+      },
+      'x-assistant-result-policy': {
+        version: '1',
+        allowedFieldPaths: input.outputAllowed,
+        deniedFieldPaths: ['organizationId'],
+        permissionMasks: [],
+        limits: {
+          maxDepth: 4,
+          maxItems: 100,
+          maxStringLength: 512,
+          maxTotalBytes: 16384
+        },
+        evidenceSafeProvenanceFields: input.evidenceProvenance
+      }
     },
     requiredPermissions: input.requiredPermissions,
     riskLevel: input.riskLevel ?? RiskLevel.low,

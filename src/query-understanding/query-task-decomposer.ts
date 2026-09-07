@@ -9,11 +9,15 @@ import {
   QueryUnderstandingToolCandidate
 } from './query-understanding.types';
 
+export interface QueryUnderstandingPlannedCandidate extends QueryUnderstandingToolCandidate {
+  arguments: Record<string, unknown>;
+}
+
 export function inferCandidateTools(
   text: string,
   entities: QueryUnderstandingEntityCandidate[],
   normalizedTerms: QueryUnderstandingNormalizedTerm[]
-): QueryUnderstandingToolCandidate[] {
+): QueryUnderstandingPlannedCandidate[] {
   if (text.length === 0 || isPunctuationOnly(text)) {
     return [];
   }
@@ -26,21 +30,27 @@ export function inferCandidateTools(
     return [];
   }
 
-  const tools: QueryUnderstandingToolCandidate[] = [];
+  const tools: QueryUnderstandingPlannedCandidate[] = [];
   if (hasEntity(entities, 'orderId') || hasNormalized(normalizedTerms, 'order')) {
-    tools.push({ key: 'mock.orders.status.lookup', reason: 'order status query' });
+    tools.push(candidate('mock.orders.status.lookup', 'order status query', firstEntityValue(entities, ['orderId'])));
   }
   if (hasEntity(entities, 'workOrderId') || hasNormalized(normalizedTerms, 'workOrder')) {
-    tools.push({ key: 'mock.work-orders.progress.lookup', reason: 'work order progress query' });
+    tools.push(candidate('mock.work-orders.progress.lookup', 'work order progress query', firstEntityValue(entities, ['workOrderId'])));
   }
   if (hasEntity(entities, 'itemSku') || hasNormalized(normalizedTerms, 'inventory') || hasNormalized(normalizedTerms, 'itemSku')) {
-    tools.push({ key: 'mock.inventory.availability.lookup', reason: 'inventory availability query' });
+    tools.push(candidate('mock.inventory.availability.lookup', 'inventory availability query', firstEntityValue(entities, ['itemSku'])));
   }
   if (hasNormalized(normalizedTerms, 'businessPartner')) {
-    tools.push({ key: 'mock.business-partner.history.lookup', reason: 'business partner history query' });
+    tools.push(
+      candidate(
+        'mock.business-partner.history.lookup',
+        'business partner history query',
+        firstEntityValue(entities, ['customerId', 'supplierId'])
+      )
+    );
   }
 
-  return tools.length > 0 ? tools : [{ key: 'mock.general.lookup', reason: 'generic internal lookup' }];
+  return tools.length > 0 ? tools : [candidate('mock.general.lookup', 'generic internal lookup')];
 }
 
 export function inferTaskType(text: string, candidateTools: QueryUnderstandingToolCandidate[]): string {
@@ -164,4 +174,19 @@ function hasNormalized(terms: QueryUnderstandingNormalizedTerm[], normalizedTerm
 
 function isDestructiveIntent(text: string): boolean {
   return text.includes('刪除') || text.includes('取消') || text.includes('核准');
+}
+
+function candidate(key: string, reason: string, entityId?: string): QueryUnderstandingPlannedCandidate {
+  return {
+    key,
+    arguments: entityId ? { entityId } : {},
+    reason
+  };
+}
+
+function firstEntityValue(
+  entities: QueryUnderstandingEntityCandidate[],
+  types: readonly QueryUnderstandingEntityCandidate['type'][]
+): string | undefined {
+  return entities.find((entity) => types.includes(entity.type))?.value;
 }

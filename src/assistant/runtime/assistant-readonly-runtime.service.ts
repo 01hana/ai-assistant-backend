@@ -24,7 +24,8 @@ export class AssistantReadonlyRuntimeService {
 
     const entityRef = getPageEntityRef(input.pageContext);
     const visibleFields = getVisibleColumns(input.pageContext);
-    const toolName = firstToolName(input.executionPlan.candidateTools);
+    const candidate = firstPlannedCandidate(input.executionPlan.candidateTools);
+    const toolName = candidate.key;
     const toolResolution = await this.toolRegistry.resolveToolForCustomer(toolName, input.customerScope);
     const resolvedTool = toolResolution.resolved;
 
@@ -140,10 +141,7 @@ export class AssistantReadonlyRuntimeService {
       };
     }
 
-    const toolInput = {
-      entityId: entityRef.entityId
-    };
-    const validation = this.toolRegistry.validateInput(tool, toolInput);
+    const validation = this.toolRegistry.validateNamedOperation(tool, candidate);
     if (!validation.valid) {
       await this.permissionPrecheck.recordRuntimeCustomerToolDenied({
         customerScope: input.customerScope,
@@ -193,14 +191,15 @@ export class AssistantReadonlyRuntimeService {
       toolVersion: tool.version,
       riskLevel: tool.riskLevel,
       entityId: entityRef.entityId,
-      visibleFields
+      visibleFields,
+      safeInputSummary: validation.safeInputSummary
     });
     const connectorResult = await this.mockConnector.execute({
       requestId: input.requestId,
       organizationId: input.identityContext.organization.organizationId,
       actorId: input.identityContext.actor.actorId,
       toolKey: tool.key,
-      arguments: toolInput
+      arguments: validation.operation.arguments
     });
     const durationMs = Math.max(1, Date.now() - startedAt);
 
@@ -282,15 +281,15 @@ export class AssistantReadonlyRuntimeService {
   }
 }
 
-function firstToolName(candidateTools: Prisma.JsonValue): string {
+function firstPlannedCandidate(candidateTools: Prisma.JsonValue): Record<string, unknown> & { key: string } {
   if (!Array.isArray(candidateTools) || candidateTools.length === 0) {
-    return 'mock.general.lookup';
+    return { key: 'mock.general.lookup', arguments: {}, reason: 'missing candidate' };
   }
 
   const tool = candidateTools[0];
   if (tool && typeof tool === 'object' && 'key' in tool && typeof tool.key === 'string') {
-    return tool.key;
+    return tool as Record<string, unknown> & { key: string };
   }
 
-  return 'mock.general.lookup';
+  return { key: 'mock.general.lookup', arguments: {}, reason: 'invalid candidate' };
 }

@@ -12,6 +12,11 @@ import {
   StartToolCallInput,
   VisibleToolCallInput
 } from './runtime.types';
+import { SafeToolInputSummary } from '../../tools/tool-registry.types';
+
+type StartToolCallWithSafeSummary = StartToolCallInput & {
+  safeInputSummary?: SafeToolInputSummary;
+};
 
 @Injectable()
 export class ToolCallService {
@@ -20,7 +25,7 @@ export class ToolCallService {
     private readonly auditWriter: AuditWriterService
   ) {}
 
-  async startToolCall(input: StartToolCallInput): Promise<{ toolCall: ToolCall }> {
+  async startToolCall(input: StartToolCallWithSafeSummary): Promise<{ toolCall: ToolCall }> {
     await this.assertCustomerParents(input);
     const toolCall = await this.prisma.db.toolCall.create({
       data: {
@@ -30,10 +35,12 @@ export class ToolCallService {
         messageId: input.messageId,
         toolName: input.toolName,
         toolVersion: input.toolVersion ?? 'unknown',
-        inputSummary: toJsonInput({
-          entityId: input.entityId,
-          visibleFieldCount: input.visibleFields.length
-        }),
+        inputSummary: toJsonInput(
+          input.safeInputSummary ?? {
+            entityId: input.entityId,
+            visibleFieldCount: input.visibleFields.length
+          }
+        ),
         permissionResult: toJsonInput({
           scopes: input.identityContext.actor.permissionScopes,
           visibleFields: input.visibleFields

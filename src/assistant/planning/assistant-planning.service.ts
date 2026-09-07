@@ -6,7 +6,21 @@ import { createRuntimeDecisionMetadata } from '../../observability/observability
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryUnderstandingService } from '../../query-understanding/query-understanding.service';
 import { QueryUnderstandingOutput } from '../../query-understanding/query-understanding.types';
-import { AssistantPlanningInput, AssistantPlanningResult, PersistedExecutionPlan } from './assistant-planning.types';
+import {
+  AssistantPlanningInput,
+  AssistantPlanningResult,
+  PersistedExecutionPlan,
+  PlannedOperationCandidate
+} from './assistant-planning.types';
+
+const MAX_ARGUMENT_KEYS = 32;
+const MAX_ARGUMENT_DEPTH = 4;
+const MAX_ARRAY_ITEMS = 100;
+const MAX_ARGUMENT_STRING_LENGTH = 512;
+const MAX_ARGUMENT_BYTES = 16 * 1024;
+const MAX_CANDIDATE_TEXT_LENGTH = 256;
+const PROHIBITED_ARGUMENT_KEY = /(sql|url|uri|path|query|command|credential|password|secret|token|connectorcontextref|connectorkey|adapterkey|endpoint)/i;
+const PROHIBITED_ARGUMENT_VALUE = /(^|\s)(select|insert|update|delete|drop|alter|create|exec(?:ute)?)\s|https?:\/\/|^[/.]{1,2}\/|\b(?:bearer|basic)\s+|(?:^|\s)(?:curl|wget|bash|sh|powershell)\s/i;
 
 @Injectable()
 export class AssistantPlanningService {
@@ -74,13 +88,15 @@ function toExecutionPlanCreateInput(
   input: AssistantPlanningInput,
   output: QueryUnderstandingOutput
 ): Prisma.ExecutionPlanUncheckedCreateInput {
+  const candidateTools = normalizePlannedCandidates(output.candidateTools);
+
   return {
     customerId: input.customerScope.customerId,
     sessionId: input.sessionId,
     messageId: input.messageId,
     taskType: output.taskType,
     requiredEvidence: toJsonInput(output.requiredEvidence),
-    candidateTools: toJsonInput(output.candidateTools),
+    candidateTools: toJsonInput(candidateTools),
     permissionChecks: toJsonInput([
       {
         organizationId: input.hostIntegrationContext.organizationId,
@@ -95,7 +111,7 @@ function toExecutionPlanCreateInput(
       format: 'text',
       includesEvidence: true
     }),
-    requiresMultiStepToolUse: output.candidateTools.length > 1,
+    requiresMultiStepToolUse: candidateTools.length > 1,
     decision: determinePlanningDecision(output)
   };
 }
@@ -121,4 +137,123 @@ function mapExecutionPlan(plan: ExecutionPlan): PersistedExecutionPlan {
 
 function toJsonInput<T>(value: T): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue;
+}
+
+function normalizePlannedCandidates(value: unknown): PlannedOperationCandidate[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((candidate) => {
+    if (!isRecord(candidate)) {
+      return [];
+    }
+
+    const key = boundedText(candidate.key);
+    const reason = boundedText(candidate.reason);
+    if (!key || !reason) {
+      return [];
+    }
+
+    return [
+      {
+        key,
+        arguments: normalizePlannedArguments(candidate.arguments),
+        reason
+      }
+    ];
+  });
+}
+
+function normalizePlannedArguments(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const keyCounter = { value: 0 };
+  const normalized = normalizeArgumentRecord(value, 1, keyCounter);
+  if (!normalized) {
+    return {};
+  }
+
+  try {
+    return Buffer.byteLength(JSON.stringify(normalized), 'utf8') <= MAX_ARGUMENT_BYTES ? normalized : {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeArgumentRecord(
+  value: Record<string, unknown>,
+  depth: number,
+  keyCounter: { value: number }
+): Record<string, unknown> | undefined {
+  if (depth > MAX_ARGUMENT_DEPTH) {
+    return undefined;
+  }
+
+  const output: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    keyCounter.value += 1;
+    if (keyCounter.value > MAX_ARGUMENT_KEYS || !isSafeArgumentKey(key)) {
+      continue;
+    }
+
+    const normalized = normalizeArgumentValue(entry, depth, keyCounter);
+    if (normalized !== undefined) {
+      output[key] = normalized;
+    }
+  }
+
+  return output;
+}
+
+function normalizeArgumentValue(
+  value: unknown,
+  depth: number,
+  keyCounter: { value: number }
+): unknown {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 && trimmed.length <= MAX_ARGUMENT_STRING_LENGTH && !PROHIBITED_ARGUMENT_VALUE.test(trimmed)
+      ? trimmed
+      : undefined;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === 'boolean' || value === null) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (depth >= MAX_ARGUMENT_DEPTH || value.length > MAX_ARRAY_ITEMS) {
+      return undefined;
+    }
+    const normalized = value.map((entry) => normalizeArgumentValue(entry, depth + 1, keyCounter));
+    return normalized.some((entry) => entry === undefined) ? undefined : normalized;
+  }
+  if (isRecord(value)) {
+    return normalizeArgumentRecord(value, depth + 1, keyCounter);
+  }
+  return undefined;
+}
+
+function boundedText(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= MAX_CANDIDATE_TEXT_LENGTH ? trimmed : undefined;
+}
+
+function isSafeArgumentKey(value: string): boolean {
+  return /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(value) && !PROHIBITED_ARGUMENT_KEY.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }

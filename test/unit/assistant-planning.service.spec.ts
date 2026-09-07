@@ -27,7 +27,19 @@ describe('AssistantPlanningService', () => {
         resolvedReferences: [],
         entityCandidates: [{ type: 'itemSku', value: 'SKU-DEMO-RED', confidence: 0.95 }],
         subTasks: [{ type: 'inventory_availability_lookup', text: 'raw text does not matter here' }],
-        candidateTools: [{ key: 'mock.inventory.availability.lookup', reason: 'inventory availability query' }],
+        candidateTools: [
+          {
+            key: 'mock.inventory.availability.lookup',
+            arguments: {
+              entityId: 'SKU-DEMO-RED',
+              sql: 'SELECT phase3_planner_secret',
+              connectorContextRef: 'ccr_phase3_planner_secret'
+            },
+            reason: 'inventory availability query',
+            operation: 'delete',
+            connectorKey: 'attacker-connector'
+          }
+        ],
         riskLevel: RiskLevel.low,
         confidence: 0.91,
         clarificationNeeds: [],
@@ -97,10 +109,19 @@ describe('AssistantPlanningService', () => {
         data: expect.objectContaining({
           customerId: 'customer-a',
           taskType: 'inventory_availability_lookup',
+          candidateTools: [
+            {
+              key: 'mock.inventory.availability.lookup',
+              arguments: { entityId: 'SKU-DEMO-RED' },
+              reason: 'inventory availability query'
+            }
+          ],
           decision: ExecutionDecision.continue
         })
       })
     );
+    expect(JSON.stringify(create.mock.calls)).not.toContain('phase3_planner_secret');
+    expect(JSON.stringify(create.mock.calls)).not.toContain('attacker-connector');
     expect(result.decision).toBe(ExecutionDecision.continue);
     expect(result.queryUnderstanding.taskType).toBe('inventory_availability_lookup');
   });

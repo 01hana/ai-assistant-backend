@@ -233,6 +233,33 @@ const baseInputSchema = {
   }
 };
 
+const createMockOutputSchema = (input: {
+  required: string[];
+  properties: Record<string, Record<string, unknown>>;
+  allowedFieldPaths: string[];
+  evidenceSafeProvenanceFields: string[];
+}) => ({
+  type: 'object',
+  required: input.required,
+  properties: {
+    ...input.properties,
+    organizationId: { type: 'string' }
+  },
+  'x-assistant-result-policy': {
+    version: '1',
+    allowedFieldPaths: input.allowedFieldPaths,
+    deniedFieldPaths: ['organizationId'],
+    permissionMasks: [],
+    limits: {
+      maxDepth: 4,
+      maxItems: 100,
+      maxStringLength: 512,
+      maxTotalBytes: 16384
+    },
+    evidenceSafeProvenanceFields: input.evidenceSafeProvenanceFields
+  }
+});
+
 const MOCK_TOOL_DEFINITIONS = [
   {
     name: 'mock.orders.status.lookup',
@@ -241,14 +268,19 @@ const MOCK_TOOL_DEFINITIONS = [
     resource: 'orders',
     operation: ToolOperation.read,
     inputSchema: baseInputSchema,
-    outputSchema: {
-      type: 'object',
+    outputSchema: createMockOutputSchema({
       required: ['orderId', 'status'],
       properties: {
         orderId: { type: 'string' },
-        status: { type: 'string' }
-      }
-    },
+        status: { type: 'string' },
+        requestedShipDate: { type: 'string' },
+        committedShipDate: { type: 'string' },
+        lineCount: { type: 'number' },
+        holdReason: { type: 'string' }
+      },
+      allowedFieldPaths: ['orderId', 'status', 'requestedShipDate', 'committedShipDate', 'lineCount', 'holdReason'],
+      evidenceSafeProvenanceFields: ['orderId']
+    }),
     requiredPermissions: ['orders:read'],
     riskLevel: RiskLevel.low,
     connectorKey: 'mock',
@@ -266,14 +298,16 @@ const MOCK_TOOL_DEFINITIONS = [
     resource: 'orders',
     operation: ToolOperation.update,
     inputSchema: baseInputSchema,
-    outputSchema: {
-      type: 'object',
+    outputSchema: createMockOutputSchema({
       required: ['orderId', 'status'],
       properties: {
         orderId: { type: 'string' },
-        status: { type: 'string' }
-      }
-    },
+        status: { type: 'string' },
+        sideEffectApplied: { type: 'boolean' }
+      },
+      allowedFieldPaths: ['orderId', 'status', 'sideEffectApplied'],
+      evidenceSafeProvenanceFields: ['orderId']
+    }),
     requiredPermissions: ['orders:update'],
     riskLevel: RiskLevel.medium,
     hasSideEffect: true,
@@ -294,14 +328,16 @@ const MOCK_TOOL_DEFINITIONS = [
     resource: 'orders',
     operation: ToolOperation.update,
     inputSchema: baseInputSchema,
-    outputSchema: {
-      type: 'object',
+    outputSchema: createMockOutputSchema({
       required: ['orderId', 'status'],
       properties: {
         orderId: { type: 'string' },
-        status: { type: 'string' }
-      }
-    },
+        status: { type: 'string' },
+        sideEffectApplied: { type: 'boolean' }
+      },
+      allowedFieldPaths: ['orderId', 'status', 'sideEffectApplied'],
+      evidenceSafeProvenanceFields: ['orderId']
+    }),
     requiredPermissions: ['orders:approve'],
     riskLevel: RiskLevel.high,
     hasSideEffect: true,
@@ -322,14 +358,28 @@ const MOCK_TOOL_DEFINITIONS = [
     resource: 'work_orders',
     operation: ToolOperation.read,
     inputSchema: baseInputSchema,
-    outputSchema: {
-      type: 'object',
+    outputSchema: createMockOutputSchema({
       required: ['workOrderId', 'status'],
       properties: {
         workOrderId: { type: 'string' },
-        status: { type: 'string' }
-      }
-    },
+        itemSku: { type: 'string' },
+        status: { type: 'string' },
+        plannedQuantity: { type: 'number' },
+        completedQuantity: { type: 'number' },
+        currentOperation: { type: 'string' },
+        estimatedCompletionAt: { type: 'string' }
+      },
+      allowedFieldPaths: [
+        'workOrderId',
+        'itemSku',
+        'status',
+        'plannedQuantity',
+        'completedQuantity',
+        'currentOperation',
+        'estimatedCompletionAt'
+      ],
+      evidenceSafeProvenanceFields: ['workOrderId']
+    }),
     requiredPermissions: ['work-orders:read'],
     riskLevel: RiskLevel.low,
     connectorKey: 'mock',
@@ -347,14 +397,26 @@ const MOCK_TOOL_DEFINITIONS = [
     resource: 'inventory',
     operation: ToolOperation.read,
     inputSchema: baseInputSchema,
-    outputSchema: {
-      type: 'object',
+    outputSchema: createMockOutputSchema({
       required: ['itemSku', 'availableQuantity'],
       properties: {
         itemSku: { type: 'string' },
-        availableQuantity: { type: 'number' }
-      }
-    },
+        warehouseCode: { type: 'string' },
+        availableQuantity: { type: 'number' },
+        allocatedQuantity: { type: 'number' },
+        incomingQuantity: { type: 'number' },
+        nextReceiptDate: { type: 'string' }
+      },
+      allowedFieldPaths: [
+        'itemSku',
+        'warehouseCode',
+        'availableQuantity',
+        'allocatedQuantity',
+        'incomingQuantity',
+        'nextReceiptDate'
+      ],
+      evidenceSafeProvenanceFields: ['itemSku']
+    }),
     requiredPermissions: ['inventory:read'],
     riskLevel: RiskLevel.low,
     connectorKey: 'mock',
@@ -372,14 +434,28 @@ const MOCK_TOOL_DEFINITIONS = [
     resource: 'business_partners',
     operation: ToolOperation.read,
     inputSchema: baseInputSchema,
-    outputSchema: {
-      type: 'object',
+    outputSchema: createMockOutputSchema({
       required: ['partnerId', 'relationshipStatus'],
       properties: {
         partnerId: { type: 'string' },
-        relationshipStatus: { type: 'string' }
-      }
-    },
+        partnerType: { type: 'string' },
+        displayCode: { type: 'string' },
+        relationshipStatus: { type: 'string' },
+        recentActivitySummary: { type: 'string' },
+        openItemCount: { type: 'number' },
+        riskNotes: { type: 'array', minItems: 0, maxItems: 100, items: { type: 'string' } }
+      },
+      allowedFieldPaths: [
+        'partnerId',
+        'partnerType',
+        'displayCode',
+        'relationshipStatus',
+        'recentActivitySummary',
+        'openItemCount',
+        'riskNotes'
+      ],
+      evidenceSafeProvenanceFields: ['partnerId']
+    }),
     requiredPermissions: ['business-partners:read'],
     riskLevel: RiskLevel.low,
     connectorKey: 'mock',
