@@ -1,4 +1,4 @@
-import { Prisma } from '../generated/prisma/client';
+import { NormalizedPageContext } from '../assistant/page-context/page-context.types';
 import {
   QueryUnderstandingContextStateSnapshot,
   QueryUnderstandingResolvedReference
@@ -8,7 +8,7 @@ export const DEIXIS_PATTERN = /(這筆|這張|目前|剛剛選取|剛才選取)/
 
 export function resolveDeixisReferences(
   text: string,
-  pageContext: Prisma.InputJsonValue | undefined,
+  pageContext: NormalizedPageContext | undefined,
   assistantContextState: QueryUnderstandingContextStateSnapshot | undefined
 ): QueryUnderstandingResolvedReference[] {
   if (!DEIXIS_PATTERN.test(text)) {
@@ -76,35 +76,17 @@ export function resolveDeixisReferences(
   ];
 }
 
-export function getPageEntity(pageContext: Prisma.InputJsonValue | undefined): { entityType?: string; entityId?: string } | undefined {
-  const pageContextObject = toJsonRecord(pageContext);
-  if (!pageContextObject) {
+export function getPageEntity(pageContext: NormalizedPageContext | undefined): { entityType?: string; entityId?: string } | undefined {
+  if (!pageContext) {
     return undefined;
   }
 
   return {
-    entityType: typeof pageContextObject.entityType === 'string' ? pageContextObject.entityType : undefined,
-    entityId: typeof pageContextObject.entityId === 'string' ? pageContextObject.entityId : undefined
+    entityType: pageContext.entityType,
+    entityId: pageContext.entityId
   };
 }
 
-function getSelectedRows(pageContext: Prisma.InputJsonValue | undefined): Array<{ id?: string }> {
-  const pageContextObject = toJsonRecord(pageContext);
-  if (!pageContextObject || !Array.isArray(pageContextObject.selectedRows)) {
-    return [];
-  }
-
-  return pageContextObject.selectedRows
-    .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
-    .map((row: Record<string, unknown>) => ({
-      id: typeof row.id === 'string' ? row.id : undefined
-    }));
-}
-
-function toJsonRecord(value: Prisma.InputJsonValue | undefined): Record<string, unknown> | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return value as Record<string, unknown>;
+function getSelectedRows(pageContext: NormalizedPageContext | undefined): Array<{ id: string }> {
+  return (pageContext?.selectedRows ?? []).map((row) => ({ id: row.id }));
 }

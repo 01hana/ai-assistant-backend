@@ -3,6 +3,7 @@ import { RiskLevel, ExecutionDecision } from '../../src/generated/prisma/enums';
 import { AuditWriterService } from '../../src/audit/audit-writer.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { QueryUnderstandingService } from '../../src/query-understanding/query-understanding.service';
+import { HostIntegrationRequestFactory } from '../../src/host-integration/host-integration-request.factory';
 import {
   CUSTOMER_SCOPE_FIXTURES,
   createCustomerScopeFixtureIdentityContext,
@@ -83,7 +84,9 @@ describe('assistant planning integration', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '查 SO-10001 訂單狀態',
-      identityContext: createCustomerScopeFixtureIdentityContext(CUSTOMER_SCOPE_FIXTURES.customerA)
+      hostIntegrationContext: new HostIntegrationRequestFactory().createHostContext(
+        createCustomerScopeFixtureIdentityContext(CUSTOMER_SCOPE_FIXTURES.customerA)
+      )
     });
 
     expect(create).toHaveBeenCalledWith(

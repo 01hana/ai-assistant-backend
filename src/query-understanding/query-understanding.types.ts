@@ -1,14 +1,15 @@
 import { Prisma } from '../generated/prisma/client';
 import { RiskLevel } from '../generated/prisma/enums';
-import { RequestIdentityContext } from '../identity/identity-context.types';
+import { HostIntegrationContext } from '../host-integration/host-integration.types';
+import { NormalizedPageContext } from '../assistant/page-context/page-context.types';
 
 export interface QueryUnderstandingInput {
   requestId: string;
   sessionId: string;
   messageId: string;
   text: string;
-  identityContext: RequestIdentityContext;
-  pageContext?: Prisma.InputJsonValue;
+  hostIntegrationContext: HostIntegrationContext;
+  pageContext?: NormalizedPageContext;
   assistantContextState?: QueryUnderstandingContextStateSnapshot;
   now?: Date;
   timezone?: string;

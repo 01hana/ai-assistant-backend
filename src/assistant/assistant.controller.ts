@@ -17,7 +17,7 @@ import {
   IdentityRequest,
 } from "../identity/identity-context.extractor";
 import { IdentityGuard } from "../identity/identity.guard";
-import { createCustomerScopeFromIdentityContext } from "../identity/customer-scope.factory";
+import { HostIntegrationRequestFactory, createCustomerScopeFromHostIntegrationContext } from "../host-integration/host-integration-request.factory";
 import {
   CreateAssistantSessionDto,
   SendAssistantMessageDto,
@@ -34,6 +34,7 @@ export class AssistantController {
     private readonly assistantSessionService: AssistantSessionService,
     private readonly assistantMessageService: AssistantMessageService,
     private readonly assistantHistoryService: AssistantHistoryService,
+    private readonly hostIntegrationRequestFactory: HostIntegrationRequestFactory,
   ) {}
 
   @Post("sessions")
@@ -42,10 +43,11 @@ export class AssistantController {
     @Body() body: CreateAssistantSessionDto,
   ) {
     const identityContext = getRequiredIdentityContext(request);
+    const { host, pageContext } = this.hostIntegrationRequestFactory.create(identityContext, body.pageContext);
     return this.assistantSessionService.createSession({
       requestId: identityContext.requestId,
-      identityContext,
-      pageContext: body.pageContext,
+      hostIntegrationContext: host,
+      pageContext,
     });
   }
 
@@ -72,8 +74,9 @@ export class AssistantController {
   ) {
     const identityContext = getRequiredIdentityContext(request);
     const requestId = identityContext.requestId;
+    const { host, pageContext, transient } = this.hostIntegrationRequestFactory.create(identityContext, body.pageContext);
 
-    const customerScope = createCustomerScopeFromIdentityContext(identityContext);
+    const customerScope = createCustomerScopeFromHostIntegrationContext(host);
     await this.assistantSessionService.getVisibleSession(sessionId, customerScope);
 
     response.status(HttpStatus.OK);
@@ -85,7 +88,9 @@ export class AssistantController {
         sessionId,
         message: body.message,
         identityContext,
-        pageContext: body.pageContext,
+        hostIntegrationContext: host,
+        pageContext,
+        transientConnectorContext: transient,
       });
 
       response.send(

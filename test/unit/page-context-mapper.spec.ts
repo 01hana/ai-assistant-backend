@@ -4,6 +4,7 @@ import {
   toPageContextAuditMetadata,
   toPageContextPersistence
 } from '../../src/assistant/page-context/page-context.mapper';
+import { NormalizedPageContext } from '../../src/assistant/page-context/page-context.types';
 
 describe('page context mapper', () => {
   it('persists the supported page context shape', () => {
@@ -44,7 +45,7 @@ describe('page context mapper', () => {
       screenId: 'order-detail',
       entityType: 'order',
       entityId: 'SO-10001',
-      selectedRows: [{ id: 'SO-10001', data: { amount: 128000 } }],
+      selectedRows: [{ id: 'SO-10001', summary: { status: 'open' } }],
       activeFilters: [{ field: 'amount', value: 128000 }],
       visibleColumns: ['status', 'customerName'],
       userVisibleState: { expandedSections: ['sensitive'] }
@@ -61,5 +62,16 @@ describe('page context mapper', () => {
     });
     expect(JSON.stringify(metadata)).not.toContain('128000');
     expect(JSON.stringify(metadata)).not.toContain('expandedSections');
+  });
+
+  it('never persists raw selected-row business data or arbitrary presentation state', () => {
+    const persisted = toPageContextPersistence({
+      module: 'orders',
+      selectedRows: [{ id: 'SO-10001', data: { amount: 128000 } }],
+      userVisibleState: { nested: { credential: 'native-secret' } }
+    } as unknown as NormalizedPageContext);
+
+    expect(JSON.stringify(persisted)).not.toContain('128000');
+    expect(JSON.stringify(persisted)).not.toContain('native-secret');
   });
 });

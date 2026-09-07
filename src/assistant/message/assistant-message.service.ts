@@ -5,7 +5,7 @@ import { ApprovalRequestService } from '../../approvals/approval-request.service
 import { EscalationRequestService } from '../../approvals/escalation-request.service';
 import { AttachedEvidence, EvidenceRefService } from '../../evidence/evidence-ref.service';
 import { Prisma } from '../../generated/prisma/client';
-import { createCustomerScopeFromIdentityContext } from '../../identity/customer-scope.factory';
+import { createCustomerScopeFromHostIntegrationContext } from '../../host-integration/host-integration-request.factory';
 import { AnswerDecisionStatus, AssistantMessageRole, NoAnswerReason, RiskLevel } from '../../generated/prisma/enums';
 import { ReviewItemService } from '../../feedback/review-item.service';
 import { RetrievalService } from '../../retrieval/retrieval.service';
@@ -47,7 +47,7 @@ export class AssistantMessageService {
   ) {}
 
   async sendMessage(input: SendAssistantMessageInput): Promise<AssistantSseEventRecord[]> {
-    const customerScope = createCustomerScopeFromIdentityContext(input.identityContext);
+    const customerScope = createCustomerScopeFromHostIntegrationContext(input.hostIntegrationContext);
     const session = await this.sessionService.getVisibleSession(input.sessionId, customerScope);
     const userMessage = await this.messageRepository.createUserMessage({
       customerScope,
@@ -75,8 +75,8 @@ export class AssistantMessageService {
       sessionId: session.id,
       messageId: userMessage.id,
       text: input.message,
-      identityContext: input.identityContext,
-      pageContext: toPageContextPersistence(input.pageContext),
+      hostIntegrationContext: input.hostIntegrationContext,
+      pageContext: input.pageContext,
       assistantContextState: latestContextState
         ? {
             currentModule: latestContextState.currentModule,
@@ -562,8 +562,10 @@ export class AssistantMessageService {
       sourceMessageId: userMessage.id,
       responseMessageId: assistantMessage.id,
       identityContext: input.identityContext,
+      hostIntegrationContext: input.hostIntegrationContext,
       executionPlan: planningResult.executionPlan,
-      pageContext: input.pageContext
+      pageContext: input.pageContext,
+      transientConnectorContext: input.transientConnectorContext
     });
 
     if (runtimeResult.toolLifecycle !== 'completed') {
@@ -956,7 +958,7 @@ export class AssistantMessageService {
   }
 
   private async completeRetrievalFailure(input: {
-    customerScope: ReturnType<typeof createCustomerScopeFromIdentityContext>;
+    customerScope: ReturnType<typeof createCustomerScopeFromHostIntegrationContext>;
     requestId: string;
     sessionId: string;
     messageId: string;

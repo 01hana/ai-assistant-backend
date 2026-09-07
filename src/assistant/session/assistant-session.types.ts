@@ -1,12 +1,13 @@
 import { AssistantSessionStatus, AssistantTaskState } from '../../generated/prisma/enums';
 import { CustomerScope } from '../../identity/customer-scope.types';
 import { RequestIdentityContext } from '../../identity/identity-context.types';
-import { PageContextDto } from '../page-context/page-context.dto';
+import { HostIntegrationContext } from '../../host-integration/host-integration.types';
+import { NormalizedPageContext } from '../page-context/page-context.types';
 
 export interface CreateAssistantSessionInput {
   requestId: string;
-  identityContext: RequestIdentityContext;
-  pageContext?: PageContextDto;
+  hostIntegrationContext: HostIntegrationContext;
+  pageContext?: NormalizedPageContext;
 }
 
 export interface AssistantSessionSummary {

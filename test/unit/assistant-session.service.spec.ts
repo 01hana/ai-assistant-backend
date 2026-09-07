@@ -4,6 +4,7 @@ import { AssistantSessionService } from '../../src/assistant/session/assistant-s
 import { AssistantSessionStatus, AssistantTaskState } from '../../src/generated/prisma/enums';
 import { createCustomerScopeFromIdentityContext } from '../../src/identity/customer-scope.factory';
 import { RequestIdentityContext } from '../../src/identity/identity-context.types';
+import { HostIntegrationRequestFactory } from '../../src/host-integration/host-integration-request.factory';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
 describe('AssistantSessionService', () => {
@@ -14,7 +15,7 @@ describe('AssistantSessionService', () => {
 
     const result = await harness.service.createSession({
       requestId: 'req-create-session',
-      identityContext: identityContextFor('customer-a'),
+      hostIntegrationContext: hostContextFor('customer-a'),
       pageContext: { module: 'orders' }
     });
 
@@ -49,7 +50,7 @@ describe('AssistantSessionService', () => {
     await expect(
       harness.service.createSession({
         requestId: 'req-create-session-failure',
-        identityContext: identityContextFor('customer-a'),
+        hostIntegrationContext: hostContextFor('customer-a'),
         pageContext: { module: 'orders' }
       })
     ).rejects.toThrow('session persistence failed');
@@ -257,6 +258,10 @@ function identityContextFor(customerId: string): RequestIdentityContext {
 
 function customerScopeFor(customerId: string) {
   return createCustomerScopeFromIdentityContext(identityContextFor(customerId));
+}
+
+function hostContextFor(customerId: string) {
+  return new HostIntegrationRequestFactory().createHostContext(identityContextFor(customerId));
 }
 
 function sessionRecord(customerId: string, id: string, status: AssistantSessionStatus = AssistantSessionStatus.active) {

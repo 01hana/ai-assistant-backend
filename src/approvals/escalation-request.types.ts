@@ -1,6 +1,6 @@
 import { Prisma } from '../generated/prisma/client';
 import { EscalationReason, EscalationStatus, RiskLevel } from '../generated/prisma/enums';
-import { PageContextDto } from '../assistant/page-context/page-context.dto';
+import { NormalizedPageContext } from '../assistant/page-context/page-context.types';
 import { PersistedExecutionPlan } from '../assistant/planning/assistant-planning.types';
 import { RequestIdentityContext } from '../identity/identity-context.types';
 import { CustomerScope } from '../identity/customer-scope.types';
@@ -12,7 +12,7 @@ export interface CreateEscalationRequestInput {
   messageId: string;
   identityContext: RequestIdentityContext;
   executionPlan: PersistedExecutionPlan;
-  pageContext?: PageContextDto;
+  pageContext?: NormalizedPageContext;
 }
 
 export interface EscalationRequestDecisionInput {

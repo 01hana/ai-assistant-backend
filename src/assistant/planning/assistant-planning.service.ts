@@ -18,7 +18,15 @@ export class AssistantPlanningService {
 
   async createPlan(input: AssistantPlanningInput): Promise<AssistantPlanningResult> {
     const startedAt = new Date();
-    const { output, persisted } = await this.queryUnderstandingService.understandAndPersist(input);
+    const { output, persisted } = await this.queryUnderstandingService.understandAndPersist({
+      requestId: input.requestId,
+      sessionId: input.sessionId,
+      messageId: input.messageId,
+      text: input.text,
+      hostIntegrationContext: input.hostIntegrationContext,
+      pageContext: input.pageContext,
+      assistantContextState: input.assistantContextState
+    });
     const executionPlan = await this.prisma.db.executionPlan.create({
       data: toExecutionPlanCreateInput(input, output)
     });
@@ -75,10 +83,10 @@ function toExecutionPlanCreateInput(
     candidateTools: toJsonInput(output.candidateTools),
     permissionChecks: toJsonInput([
       {
-        organizationId: input.identityContext.organization.organizationId,
-        hostApp: input.identityContext.hostApp.hostApp,
-        actorId: input.identityContext.actor.actorId,
-        scopes: input.identityContext.actor.permissionScopes
+        organizationId: input.hostIntegrationContext.organizationId,
+        hostApp: input.hostIntegrationContext.hostApp,
+        actorId: input.hostIntegrationContext.actorId,
+        scopes: input.hostIntegrationContext.permissionScopes
       }
     ]),
     riskAssessment: output.riskLevel,

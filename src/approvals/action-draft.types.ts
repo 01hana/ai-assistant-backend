@@ -2,7 +2,7 @@ import { Prisma } from '../generated/prisma/client';
 import { ActionDraftStatus, RiskLevel, ToolOperation } from '../generated/prisma/enums';
 import { RequestIdentityContext } from '../identity/identity-context.types';
 import { CustomerScope } from '../identity/customer-scope.types';
-import { PageContextDto } from '../assistant/page-context/page-context.dto';
+import { NormalizedPageContext } from '../assistant/page-context/page-context.types';
 import { PersistedExecutionPlan } from '../assistant/planning/assistant-planning.types';
 
 export interface CreateActionDraftInput {
@@ -12,7 +12,7 @@ export interface CreateActionDraftInput {
   messageId: string;
   identityContext: RequestIdentityContext;
   executionPlan: PersistedExecutionPlan;
-  pageContext?: PageContextDto;
+  pageContext?: NormalizedPageContext;
 }
 
 export interface ActionDraftResponse {

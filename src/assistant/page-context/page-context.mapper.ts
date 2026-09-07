@@ -1,8 +1,7 @@
 import { Prisma } from '../../generated/prisma/client';
-import { PageContextDto } from './page-context.dto';
-import { PageContextAuditMetadata, PageEntityRef } from './page-context.types';
+import { NormalizedPageContext, PageContextAuditMetadata, PageEntityRef } from './page-context.types';
 
-export function toPageContextPersistence(pageContext?: PageContextDto): Prisma.InputJsonValue | undefined {
+export function toPageContextPersistence(pageContext?: NormalizedPageContext): Prisma.InputJsonValue | undefined {
   if (!pageContext) {
     return undefined;
   }
@@ -13,26 +12,36 @@ export function toPageContextPersistence(pageContext?: PageContextDto): Prisma.I
     screenId: pageContext.screenId,
     entityType: pageContext.entityType,
     entityId: pageContext.entityId,
-    selectedRows: pageContext.selectedRows ?? [],
-    activeFilters: pageContext.activeFilters ?? [],
-    visibleColumns: pageContext.visibleColumns ?? [],
-    userVisibleState: pageContext.userVisibleState ?? {}
+    selectedRows: (pageContext.selectedRows ?? []).map((row) => ({
+      id: row.id,
+      ...(row.summary ? { summary: { ...row.summary } } : {})
+    })),
+    activeFilters: (pageContext.activeFilters ?? []).map((filter) => ({ ...filter })),
+    visibleColumns: [...(pageContext.visibleColumns ?? [])],
+    userVisibleState: pageContext.userVisibleState ? {
+      tab: pageContext.userVisibleState.tab,
+      view: pageContext.userVisibleState.view,
+      sortBy: pageContext.userVisibleState.sortBy,
+      sortDirection: pageContext.userVisibleState.sortDirection,
+      density: pageContext.userVisibleState.density,
+      expandedSections: [...(pageContext.userVisibleState.expandedSections ?? [])]
+    } : {}
   } as unknown as Prisma.InputJsonValue;
 }
 
-export function getPageEntityRef(pageContext?: PageContextDto): PageEntityRef {
+export function getPageEntityRef(pageContext?: NormalizedPageContext): PageEntityRef {
   return {
     entityType: pageContext?.entityType,
     entityId: pageContext?.entityId
   };
 }
 
-export function getVisibleColumns(pageContext?: PageContextDto): string[] {
+export function getVisibleColumns(pageContext?: NormalizedPageContext): string[] {
   const visibleColumns = pageContext?.visibleColumns?.filter((column) => column.trim().length > 0) ?? [];
   return visibleColumns.length > 0 ? visibleColumns : ['status'];
 }
 
-export function toPageContextAuditMetadata(pageContext?: PageContextDto): PageContextAuditMetadata | undefined {
+export function toPageContextAuditMetadata(pageContext?: NormalizedPageContext): PageContextAuditMetadata | undefined {
   if (!pageContext) {
     return undefined;
   }

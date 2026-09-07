@@ -1,26 +1,14 @@
 import { RuleBasedQueryUnderstandingPipeline } from '../../src/query-understanding/rule-based-query-understanding.pipeline';
 
-const identityContext = {
+const hostIntegrationContext = {
   requestId: 'req-normalization-001',
-  customer: {
-    customerId: 'customer-a',
-    integrationId: 'integration-erp'
-  },
-  organization: {
-    organizationId: 'org-001'
-  },
-  actor: {
-    actorId: 'actor-001',
-    roles: ['planner'],
-    permissionScopes: ['orders:read', 'inventory:read', 'work-orders:read']
-  },
-  hostApp: {
-    hostApp: 'erp'
-  },
-  auth: {
-    tokenId: 'jwt-normalization-001',
-    gatewayIssuer: 'https://gateway.test.internal'
-  }
+  customerId: 'customer-a',
+  integrationId: 'integration-erp',
+  organizationId: 'org-001',
+  actorId: 'actor-001',
+  roles: ['planner'] as const,
+  permissionScopes: ['orders:read', 'inventory:read', 'work-orders:read'] as const,
+  hostApp: 'erp'
 };
 
 const fixedNow = new Date('2026-06-21T04:00:00.000Z');
@@ -34,7 +22,7 @@ describe('query normalization and time range parsing', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '查工單、製令、料號、品號、SKU、訂單、銷售單、客戶、供應商',
-      identityContext,
+      hostIntegrationContext,
       now: fixedNow,
       timezone: 'Asia/Taipei'
     });
@@ -60,7 +48,7 @@ describe('query normalization and time range parsing', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '今天、昨天、本週、上週、本月、近三個月的訂單',
-      identityContext,
+      hostIntegrationContext,
       now: fixedNow,
       timezone: 'Asia/Taipei'
     });
@@ -83,7 +71,7 @@ describe('query normalization and time range parsing', () => {
       sessionId: 'session-001',
       messageId: 'message-tz',
       text: '今天的訂單',
-      identityContext,
+      hostIntegrationContext,
       now: new Date('2026-06-20T16:30:00.000Z'),
       timezone: 'Asia/Taipei'
     });
@@ -101,7 +89,7 @@ describe('query normalization and time range parsing', () => {
       sessionId: 'session-001',
       messageId: 'message-003',
       text: '幫我看最近的訂單',
-      identityContext,
+      hostIntegrationContext,
       now: fixedNow,
       timezone: 'Asia/Taipei'
     });

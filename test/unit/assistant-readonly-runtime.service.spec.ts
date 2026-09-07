@@ -397,13 +397,26 @@ function registeredTool(): RegisteredToolDefinition {
 }
 
 function runtimeInput() {
+  const identity = identityContext();
+
   return {
-    customerScope: createCustomerScopeFromIdentityContext(identityContext()),
+    customerScope: createCustomerScopeFromIdentityContext(identity),
     requestId: 'req-001',
     sessionId: 'session-001',
     sourceMessageId: 'message-user-001',
     responseMessageId: 'message-001',
-    identityContext: identityContext(),
+    identityContext: identity,
+    hostIntegrationContext: Object.freeze({
+      customerId: identity.customer.customerId,
+      integrationId: identity.customer.integrationId,
+      hostApp: identity.hostApp.hostApp,
+      organizationId: identity.organization.organizationId,
+      actorId: identity.actor.actorId,
+      roles: Object.freeze([...identity.actor.roles]),
+      permissionScopes: Object.freeze([...identity.actor.permissionScopes]),
+      requestId: identity.requestId
+    }),
+    transientConnectorContext: Object.freeze({}),
     executionPlan: {
       id: 'plan-001',
       customerId: 'customer-a',

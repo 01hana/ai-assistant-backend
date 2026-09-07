@@ -10,6 +10,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { QueryUnderstandingModule } from '../query-understanding/query-understanding.module';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { ToolsModule } from '../tools/tools.module';
+import { HostIntegrationModule } from '../host-integration/host-integration.module';
 import { AnswerDecisionService } from './answer/answer-decision.service';
 import { ClarificationQuestionService } from './answer/clarification-question.service';
 import { EvidenceConflictDetectorService } from './answer/evidence-conflict-detector.service';
@@ -39,7 +40,8 @@ import { AssistantSseEventBuilder } from './sse/assistant-sse-event.builder';
     FeedbackModule,
     ToolsModule,
     MockConnectorModule,
-    PermissionsModule
+    PermissionsModule,
+    HostIntegrationModule
   ],
   controllers: [AssistantController],
   providers: [

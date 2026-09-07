@@ -1,7 +1,7 @@
-export interface ConnectorAdapter {
+export interface ConnectorAdapter<TExecuteInput extends ConnectorExecuteInput = ConnectorExecuteInput> {
   readonly key: string;
   listTools(): ConnectorToolDefinition[];
-  execute(input: ConnectorExecuteInput): Promise<ConnectorExecuteResult>;
+  execute(input: TExecuteInput): Promise<ConnectorExecuteResult>;
   healthCheck(): Promise<DependencyStatus>;
 }
 

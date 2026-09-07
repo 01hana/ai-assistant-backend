@@ -3,7 +3,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { AnswerDecisionStatus, AssistantMessageRole } from '../../generated/prisma/enums';
 import { CustomerScope } from '../../identity/customer-scope.types';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PageContextDto } from '../page-context/page-context.dto';
+import { NormalizedPageContext } from '../page-context/page-context.types';
 import { toPageContextPersistence } from '../page-context/page-context.mapper';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class AssistantMessageRepository {
     sessionId: string;
     requestId: string;
     content: string;
-    pageContext?: PageContextDto;
+    pageContext?: NormalizedPageContext;
   }) {
     return this.prisma.db.assistantMessage.create({
       data: {

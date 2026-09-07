@@ -1,7 +1,8 @@
 import { Prisma } from '../../generated/prisma/client';
 import { ExecutionDecision, RiskLevel } from '../../generated/prisma/enums';
-import { RequestIdentityContext } from '../../identity/identity-context.types';
 import { CustomerScope } from '../../identity/customer-scope.types';
+import { HostIntegrationContext } from '../../host-integration/host-integration.types';
+import { NormalizedPageContext } from '../page-context/page-context.types';
 import {
   PersistedQueryUnderstandingResult,
   QueryUnderstandingContextStateSnapshot,
@@ -14,8 +15,8 @@ export interface AssistantPlanningInput {
   sessionId: string;
   messageId: string;
   text: string;
-  identityContext: RequestIdentityContext;
-  pageContext?: Prisma.InputJsonValue;
+  hostIntegrationContext: HostIntegrationContext;
+  pageContext?: NormalizedPageContext;
   assistantContextState?: QueryUnderstandingContextStateSnapshot;
 }
 

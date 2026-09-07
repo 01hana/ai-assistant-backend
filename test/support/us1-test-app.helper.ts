@@ -461,11 +461,12 @@ export async function createUs1TestAppWithState(
   });
 
   const { AppModule } = await import('../../src/app.module');
+  const { ConnectorsModule } = await import('../../src/connectors/connectors.module');
   const { createStaticInternalIdentityTokenVerifier } = await import('../../src/identity/internal-identity-token-verifier');
   const { INTERNAL_IDENTITY_CONFIG, INTERNAL_IDENTITY_TOKEN_VERIFIER } = await import('../../src/identity/identity-token.types');
   const { PrismaService } = await import('../../src/prisma/prisma.service');
   const builder = Test.createTestingModule({
-    imports: [AppModule],
+    imports: [AppModule, ConnectorsModule],
     providers: [{ provide: INTERNAL_IDENTITY_TEST_CONFIG, useValue: internalIdentity }]
   })
     .overrideProvider(INTERNAL_IDENTITY_CONFIG)

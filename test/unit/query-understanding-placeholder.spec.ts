@@ -3,27 +3,15 @@ import { RuleBasedQueryUnderstandingPipeline } from '../../src/query-understandi
 
 describe('RuleBasedQueryUnderstandingPipeline', () => {
   const service = new RuleBasedQueryUnderstandingPipeline();
-  const identityContext = {
+  const hostIntegrationContext = {
     requestId: 'req-qu-001',
-    customer: {
-      customerId: 'customer-a',
-      integrationId: 'integration-erp'
-    },
-    organization: {
-      organizationId: 'org-001'
-    },
-    actor: {
-      actorId: 'actor-001',
-      roles: ['planner'],
-      permissionScopes: ['orders:read']
-    },
-    hostApp: {
-      hostApp: 'erp'
-    },
-    auth: {
-      tokenId: 'jwt-query-understanding',
-      gatewayIssuer: 'https://gateway.test.internal'
-    }
+    customerId: 'customer-a',
+    integrationId: 'integration-erp',
+    organizationId: 'org-001',
+    actorId: 'actor-001',
+    roles: ['planner'] as const,
+    permissionScopes: ['orders:read'] as const,
+    hostApp: 'erp'
   };
 
   it('produces deterministic task type, candidate tools, and risk level for an order query', async () => {
@@ -32,7 +20,7 @@ describe('RuleBasedQueryUnderstandingPipeline', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '請幫我查 SO-10001 訂單目前狀態',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.taskType).toBe('order_status_lookup');
@@ -54,7 +42,7 @@ describe('RuleBasedQueryUnderstandingPipeline', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '？？？',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.clarificationNeeds).toEqual([
@@ -71,7 +59,7 @@ describe('RuleBasedQueryUnderstandingPipeline', () => {
       sessionId: 'session-001',
       messageId: 'message-003',
       text: '請查一下訂單',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.taskType).toBe('order_status_lookup');

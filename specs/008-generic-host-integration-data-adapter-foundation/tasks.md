@@ -72,43 +72,51 @@ MOCK_RUNTIME_BASELINE_CAPTURED=YES
 **Dependencies**: T005.  
 **Independent test**: Valid identity creates trusted context; unsafe Browser fields are removed/rejected; the opaque reference is observable only at the selected runtime input boundary.
 
-- [ ] T006 [RED] [US1] Add failing trusted-context and factory tests in proposed `test/unit/host-integration-request.factory.spec.ts`.
+- [x] T006 [RED] [US1] Add failing trusted-context and factory tests in proposed `test/unit/host-integration-request.factory.spec.ts`.
   - Files: `test/unit/host-integration-request.factory.spec.ts` (new).
   - Depends on: T005.
   - Validation: Run `npm run test:unit -- --runInBand test/unit/host-integration-request.factory.spec.ts`; failures must be limited to absent HostIntegrationContext/factory behavior.
   - Guard: Test Customer, integration, host app, organization, actor, roles, scopes, request ID, missing authority, and cross-scope mismatch using verified `RequestIdentityContext` only.
 
-- [ ] T007 [GREEN] [US1] Add trusted and transient request contracts and the ingress factory in `src/host-integration/host-integration.types.ts`, `src/host-integration/host-integration-request.factory.ts`, and `src/host-integration/host-integration.module.ts`.
+- [x] T007 [GREEN] [US1] Add trusted and transient request contracts and the ingress factory in `src/host-integration/host-integration.types.ts`, `src/host-integration/host-integration-request.factory.ts`, and `src/host-integration/host-integration.module.ts`.
   - Files: The three proposed new files.
   - Depends on: T006.
   - Validation: Make T006 pass and run `npm run typecheck`.
   - Guard: Do not replace IdentityGuard authority, use Browser values as authority, create request-global mutable state, or add persistence.
 
-- [ ] T008 [RED] [US3] Add failing PageContext normalization and opaque-reference tests in proposed `test/unit/page-context-normalizer.service.spec.ts` and existing `test/unit/page-context-mapper.spec.ts`.
+- [x] T008 [RED] [US3] Add failing PageContext normalization and opaque-reference tests in proposed `test/unit/page-context-normalizer.service.spec.ts` and existing `test/unit/page-context-mapper.spec.ts`.
   - Files: `test/unit/page-context-normalizer.service.spec.ts` (new), `test/unit/page-context-mapper.spec.ts`.
   - Depends on: T007.
   - Validation: Run both files with `npm run test:unit -- --runInBand`; failures must cover bounded `ccr_<base64url-id>` syntax, shallow allowlists, raw/nested records, credentials, authority keys, and selected-row reduction.
   - Guard: Browser-declared “safe” fields, `visibleColumns`, filters, and presentation state cannot establish evidence, operation, connector, adapter, or result authority.
 
-- [ ] T009 [GREEN] [US3] Implement wire/normalized PageContext separation in `src/assistant/page-context/page-context.dto.ts`, `src/assistant/page-context/page-context.types.ts`, `src/host-integration/page-context-normalizer.service.ts`, and `src/assistant/page-context/page-context.mapper.ts`.
+- [x] T009 [GREEN] [US3] Implement wire/normalized PageContext separation in `src/assistant/page-context/page-context.dto.ts`, `src/assistant/page-context/page-context.types.ts`, `src/host-integration/page-context-normalizer.service.ts`, and `src/assistant/page-context/page-context.mapper.ts`.
   - Files: The four listed files, including the proposed new normalizer.
   - Depends on: T008.
   - Validation: Make T008 pass; run `npm run typecheck` and the PageContext unit suites.
   - Guard: Accept `connectorContextRef` only as compatible optional wire input; never include it in `NormalizedPageContext` or make raw records necessary for business answers.
 
-- [ ] T010 [RED] [US2] Add failing ingress/orchestration and normalized-consumer tests for immediate reference extraction, session discard, runtime-only message passage, and planner/query-understanding exclusion.
+- [x] T010 [RED] [US2] Add failing ingress/orchestration and normalized-consumer tests for immediate reference extraction, session discard, runtime-only message passage, and planner/query-understanding exclusion.
   - Files: `test/unit/assistant-message.service.spec.ts` (new), `test/integration/feature008-transient-boundary.spec.ts` (new), proposed `test/unit/query-understanding.service.spec.ts`, and existing `test/unit/assistant-session.service.spec.ts`, `test/unit/assistant-message.repository.spec.ts`, `test/unit/assistant-context-state.service.spec.ts`, `test/unit/assistant-planning.service.spec.ts`, `test/unit/query-understanding-placeholder.spec.ts`, `test/unit/deixis-resolution.spec.ts`, `test/integration/action-draft-confirmation.spec.ts`, `test/integration/approval-request-flow.spec.ts`, and `test/integration/escalation-request-flow.spec.ts`.
   - Depends on: T009.
   - Validation: Run the listed files with `npm run test -- --runInBand`; assert extraction precedes repository, context-state, planning, audit, and logging calls, and observe RED because session creation, message persistence, context state, planning/query understanding, entity/deixis readers, and approval/action/escalation creation inputs still accept broad identity, wire PageContext, or arbitrary JSON instead of the required trusted/normalized inputs.
   - Guard: Do not create a second request mode, pass `TransientConnectorContext` to planning, QueryTaskDecomposer, ToolRegistry, ExecutionPlan, EvidenceRef, or grounded-answer inputs, or test Phase 3 candidate-operation shape, DataAdapter, registry, or projection behavior.
 
-- [ ] T011 [GREEN] [US2] Wire separated trusted, normalized, and transient inputs through the Assistant ingress and every current Phase 1 PageContext consumer.
+- [x] T011 [GREEN] [US2] Wire separated trusted, normalized, and transient inputs through the Assistant ingress and every current Phase 1 PageContext consumer.
   - Files: `src/assistant/assistant.controller.ts`, `src/assistant/message/assistant-message.types.ts`, `src/assistant/message/assistant-message.service.ts`, `src/assistant/runtime/runtime.types.ts`, `src/assistant/assistant.module.ts`, `src/assistant/session/assistant-session.types.ts`, `src/assistant/session/assistant-session.service.ts`, `src/assistant/message/assistant-message.repository.ts`, `src/assistant/context/assistant-context-state.types.ts`, `src/assistant/planning/assistant-planning.types.ts`, `src/assistant/planning/assistant-planning.service.ts`, `src/query-understanding/query-understanding.types.ts`, `src/query-understanding/query-understanding.service.ts`, `src/query-understanding/entity-extractor.ts`, `src/query-understanding/deixis-resolver.ts`, `src/approvals/action-draft.types.ts`, `src/approvals/approval-request.types.ts`, and `src/approvals/escalation-request.types.ts`.
   - Depends on: T010.
   - Validation: Make T010 pass; run targeted unit/integration tests and `npm run typecheck`; prove verified identity becomes `HostIntegrationContext`, wire PageContext becomes `NormalizedPageContext`, and only the message runtime receives `TransientConnectorContext` separately in memory.
   - Guard: Session creation discards transient context; session, message persistence, context state, planning, query understanding, entity/deixis readers, and approval persistence-producing inputs receive normalized context only. Approval behavior/public contracts remain unchanged. `PHASE3_CANDIDATE_OPERATION_RESTRUCTURING_INCLUDED=NO`: do not add `{ key, arguments, reason }`, legacy-operation handling, canonical ToolDefinition operation derivation, structured input validation, or ToolDefinition output policy.
 
-- [ ] T012 [RED] [US2] Expand prohibited-surface coverage in `test/integration/feature008-transient-boundary.spec.ts` and `test/integration/secret-redaction.spec.ts`.
+### Phase 1 T006–T012 Execution Evidence — 2026-09-07
+
+- T006 RED observed because the Host Integration factory module was absent; T007 GREEN completed with 1/1 suite and 16/16 tests passing, followed by a passing typecheck.
+- T008 RED observed for the absent normalizer and raw PageContext leakage; T009 GREEN completed with 2/2 suites and 17/17 tests passing.
+- T010 RED observed across the broad session, message, context, planning, query-understanding, and approval input contracts; T011 GREEN completed with 12/12 targeted suites and 42/42 tests passing, followed by a passing typecheck.
+- PageContext, planning persistence, query-understanding persistence, secret-redaction, session, and message/SSE regression coverage completed with 7/7 suites and 39/39 tests passing.
+- T012's initial expanded sentinel run was naturally green immediately after T011 with 2/2 suites and 7/7 tests passing. At that point T012–T014 remained unchecked, T013 was not started, and Phase 1 checkpoint values were not recorded pending human reconciliation.
+
+- [x] T012 [RED] [US2] Expand prohibited-surface coverage in `test/integration/feature008-transient-boundary.spec.ts` and `test/integration/secret-redaction.spec.ts`.
   - Files: The two listed integration suites.
   - Depends on: T011.
   - Validation: Assert `connectorContextRef`, native credentials, and raw Browser records are absent from AssistantMessage, AssistantContextState, ExecutionPlan, ToolCall, EvidenceRef, audit, logs, telemetry, prompt/model, SSE, and public response captures.
@@ -120,11 +128,45 @@ MOCK_RUNTIME_BASELINE_CAPTURED=YES
   - Validation: Make T012 pass and rerun `test/integration/query-understanding-persistence.spec.ts` and `test/integration/secret-redaction.spec.ts`.
   - Guard: Do not persist hashes, encoded forms, audit metadata, or derived copies of the opaque reference or native credentials.
 
-- [ ] T014 [VERIFY] [US1] Record the Phase 1 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+- [x] T014 [VERIFY] [US1] Record the Phase 1 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: This task file for evidence; Phase 1 source/test files are validation inputs only.
   - Depends on: T013.
   - Validation: Run all new Phase 1 suites, existing PageContext/planning persistence tests, and `npm run typecheck`.
   - Guard: Implement no new behavior; report `HOST_CONTEXT_READY=YES`, `NORMALIZED_PAGE_CONTEXT_READY=YES`, and `TRANSIENT_CONTEXT_ISOLATION_READY=YES` only when all negative surfaces pass.
+
+### Phase 1 Corrective Conformance Evidence — 2026-09-07
+
+- T009 correction PASS — an independently observed RED proved arbitrary Browser filter fields survived the prior denylist; the Backend now accepts only exact `status` and `amount` active-filter keys. The corrected normalizer suite passed 14/14 tests.
+- T011 correction PASS — an independently observed RED proved the factory lacked the single `create(identityContext, wirePageContext)` seam. `HostIntegrationRequestFactory` now returns the exact trusted/normalized/transient request context, `HostIntegrationModule` owns the factory and normalizer, and Assistant ingress uses only the factory. The corrected factory suite passed 17/17 tests.
+- T012 security verification PASS — the naturally green history remains unchanged. Expanded captures prove prohibited sentinels do not reach persistence, audit, ToolCall, EvidenceRef, SSE, public output, structured logs, observability metadata, model-input preparation, or actual LLM execution. Structured logging and actual LLM execution are `NOT_PRESENT_IN_PHASE1_PATH`; observability receives server-owned duration metadata only.
+- Complete focused Phase 1 and public-contract validation passed 22/22 suites and 114/114 tests. Typecheck and modified-file lint passed. Repository-wide lint reproduced the pre-existing 41 errors only in unrelated Gateway and identity-bridge files; no changed Phase 1 file failed lint.
+- T013 remains unchecked and was not executed because T012 found no leak. T014 dependency is reconciled through the verified no-leak path. T015 remains unchecked and Phase 2 was not started.
+
+```text
+ACTIVE_FILTER_SELECTION_MODEL=BACKEND_EXPLICIT_ALLOWLIST
+UNKNOWN_ACTIVE_FILTER_FIELD=DROP_OR_FAIL_CLOSED
+BROWSER_EXPANDS_FILTER_ALLOWLIST=NO
+T012_RED_OBSERVED=NO
+T012_ALREADY_GREEN_DUE_TO_PRIOR_APPROVED_GREEN=YES
+T012_SECURITY_VERIFICATION=PASS
+CONNECTOR_CONTEXT_REF_IN_LOGS=NO
+CONNECTOR_CONTEXT_REF_IN_TELEMETRY=NO
+CONNECTOR_CONTEXT_REF_IN_MODEL_INPUT=NO
+RAW_BROWSER_RECORD_IN_LOGS=NO
+RAW_BROWSER_RECORD_IN_TELEMETRY=NO
+RAW_BROWSER_RECORD_IN_MODEL_INPUT=NO
+CUSTOMER_NATIVE_CREDENTIAL_IN_LOGS=NO
+CUSTOMER_NATIVE_CREDENTIAL_IN_TELEMETRY=NO
+CUSTOMER_NATIVE_CREDENTIAL_IN_MODEL_INPUT=NO
+STRUCTURED_LOG_SURFACE=NOT_PRESENT_IN_PHASE1_PATH
+ACTUAL_LLM_EXECUTION_SURFACE=NOT_PRESENT_IN_PHASE1_PATH
+T013_REQUIRED=NO
+T013_STATUS=NOT_REQUIRED
+T014_DEPENDENCY_SATISFIED_BY_T012_NO_LEAK=YES
+HOST_CONTEXT_READY=YES
+NORMALIZED_PAGE_CONTEXT_READY=YES
+TRANSIENT_CONTEXT_ISOLATION_READY=YES
+```
 
 ## Phase 2 — Data Adapter and Trusted Registry
 
@@ -132,47 +174,77 @@ MOCK_RUNTIME_BASELINE_CAPTURED=YES
 **Dependencies**: T014.  
 **Independent test**: An exact trusted registration is uniquely eligible only after adapter capability and readiness checks; all other selections fail closed.
 
-- [ ] T015 [RED] [US4] Add failing contract-shape tests in proposed `test/unit/data-adapter-contract.spec.ts`.
+- [x] T015 [RED] [US4] Add failing contract-shape tests in proposed `test/unit/data-adapter-contract.spec.ts`.
   - Files: `test/unit/data-adapter-contract.spec.ts` (new).
   - Depends on: T014.
   - Validation: Run the new unit file; assert `DataAdapter extends ConnectorAdapter` and registration has exactly `adapter`, `connectorKey`, `customerId`, `integrationId`, `hostApp`, and `active`.
   - Guard: `REGISTRATION_OPERATION_AUTHORITY=NO`; prohibit `supportedToolKeys`, operations, ToolDefinition allowlists, Customer/integration/host wildcards, and result policies in registration.
 
-- [ ] T016 [GREEN] [US4] Add generic adapter and exact registration contracts in `src/connectors/data-adapter.interface.ts`, `src/connectors/data-adapter-registration.ts`, and `src/connectors/connector-adapter.interface.ts`.
+- [x] T016 [GREEN] [US4] Add generic adapter and exact registration contracts in `src/connectors/data-adapter.interface.ts`, `src/connectors/data-adapter-registration.ts`, and `src/connectors/connector-adapter.interface.ts`.
   - Files: Two proposed new files and the existing connector interface.
   - Depends on: T015.
   - Validation: Make T015 pass and run `npm run typecheck`.
   - Guard: Adapter capability/`isCompatible` remains implementation behavior; the adapter cannot decide output release or Customer deployment eligibility.
 
-- [ ] T017 [RED] [US4] Add failing registry-selection tests in proposed `test/unit/data-adapter-registry.service.spec.ts`.
+- [x] T017 [RED] [US4] Add failing registry-selection tests in proposed `test/unit/data-adapter-registry.service.spec.ts`.
   - Files: `test/unit/data-adapter-registry.service.spec.ts` (new).
   - Depends on: T016.
   - Validation: Cover same adapter/two Customers, wrong Customer/integration/host, inactive registration, unknown connectorKey, zero/exactly-one/multiple candidates, capability incompatibility, unhealthy readiness, Browser selection attempts, and no fallback.
   - Guard: Selection order must be exact registration match → adapter capability/compatibility → exactly one → readiness; do not invoke business-data execution.
 
-- [ ] T018 [GREEN] [US4] Implement trusted selection in proposed `src/connectors/data-adapter-registry.service.ts`.
+- [x] T018 [GREEN] [US4] Implement trusted selection in proposed `src/connectors/data-adapter-registry.service.ts`.
   - Files: `src/connectors/data-adapter-registry.service.ts` (new).
   - Depends on: T017.
   - Validation: Make T017 pass and run `npm run typecheck`.
   - Guard: Use only trusted ToolDefinition.connectorKey and HostIntegrationContext scope; disclose no registration/source details and never fall back to mock.
 
-- [ ] T019 [RED] [US4] Add failing explicit provider-array composition tests in proposed `test/unit/connectors-module.spec.ts`.
+- [x] T019 [RED] [US4] Add failing explicit provider-array composition tests in proposed `test/unit/connectors-module.spec.ts`.
   - Files: `test/unit/connectors-module.spec.ts` (new).
   - Depends on: T018.
   - Validation: Assert one readonly `DATA_ADAPTER_REGISTRATIONS` array is assembled explicitly, preserves duplicate detection, and uses no Angular-style `multi: true` assumption.
   - Guard: Do not import the new registry into `AssistantReadonlyRuntimeService` or activate the cutover in this task.
 
-- [ ] T020 [GREEN] [US4] Add connector composition in proposed `src/connectors/connectors.module.ts` and mirror its providers in `test/support/us1-test-app.helper.ts`.
+- [x] T020 [GREEN] [US4] Add connector composition in proposed `src/connectors/connectors.module.ts` and mirror its providers in `test/support/us1-test-app.helper.ts`.
   - Files: The proposed connector module and existing test helper.
   - Depends on: T019.
   - Validation: Make T019 pass and run provider-resolution/typecheck tests.
   - Guard: Keep the current direct mock runtime path active; add no database registry, dynamic plugin loading, Browser registration, or control-plane CRUD.
 
-- [ ] T021 [VERIFY] [US4] Record the Phase 2 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+- [x] T021 [VERIFY] [US4] Record the Phase 2 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: This task file for evidence; Phase 2 source/test files are validation inputs only.
   - Depends on: T020.
   - Validation: Run all Phase 2 unit tests and confirm runtime production wiring still uses the pre-cutover path.
   - Guard: Report `DATA_ADAPTER_CONTRACT_READY=YES`, `TRUSTED_REGISTRY_READY=YES`, `MULTI_CUSTOMER_REGISTRATION_ISOLATION_READY=YES`, and `REGISTRATION_OPERATION_AUTHORITY=NO` only after exact-match negatives pass.
+
+### Phase 2 T015–T021 Execution Evidence — 2026-09-07
+
+- T015 RED observed because the DataAdapter contract and registration modules were absent and `ConnectorAdapter` was not generic. T016 GREEN completed with 1/1 suite and 3/3 tests passing, followed by a passing typecheck.
+- T017 RED observed because `DataAdapterRegistry` was absent. T018 GREEN completed with 1/1 suite and 20/20 tests passing, followed by a passing typecheck. The suite covers exact Customer/integration/host/connector isolation, inactive and wildcard registrations, capability and compatibility rejection, ambiguity, readiness failure, Browser/transient non-authority, zero business execution, and no fallback.
+- T019 RED observed because `ConnectorsModule` and its explicit registration provider were absent. T020 GREEN completed with 1/1 suite and 3/3 tests passing, followed by a passing typecheck. The production provider is one frozen empty array; an explicit duplicate override remains visible to the registry and fails ambiguous.
+- T021 checkpoint PASS — all Phase 2 suites completed with 3/3 suites and 26/26 tests passing. Existing mock adapter, mock fixtures, and direct readonly-runtime coverage completed with 3/3 suites and 18/18 tests passing. The Phase 1 transient-boundary regression completed with 1/1 suite and 2/2 tests passing.
+- Typecheck, modified-file lint, and `git diff --check` passed. The checkpoint corrected only the contract test's lint-only constant-condition wrapper and the existing readonly-runtime test fixture's missing Phase 1 trusted/transient fields; no production behavior or runtime wiring changed.
+- Scope inspection confirmed no change to Prisma schema/migrations, seed data, `.specify/feature.json`, ToolDefinition policy, Gateway, identity bridge, SDK, Customer SPA, Feature 009, or `AssistantReadonlyRuntimeService`. `QueryUnderstandingToolCandidate` remains exactly `{ key, reason }`; T022 remains unchecked.
+
+```text
+DATA_ADAPTER_CONTRACT_READY=YES
+TRUSTED_REGISTRY_READY=YES
+MULTI_CUSTOMER_REGISTRATION_ISOLATION_READY=YES
+DATA_ADAPTER_REGISTRATION_FIELDS=adapter,connectorKey,customerId,integrationId,hostApp,active
+REGISTRATION_OPERATION_AUTHORITY=NO
+WILDCARD_REGISTRATION_SUPPORTED=NO
+ADAPTER_CAPABILITY_CHECK_REQUIRED=YES
+EXACTLY_ONE_SELECTION_REQUIRED=YES
+READINESS_CHECK_REQUIRED=YES
+CONNECTOR_CONTEXT_REF_USED_FOR_REGISTRY_SELECTION=NO
+PRODUCTION_REGISTRATION_ARRAY_FROZEN=YES
+PRODUCTION_REGISTRATION_ARRAY_EMPTY=YES
+DUPLICATE_REGISTRATIONS_PRESERVED=YES
+MOCK_FALLBACK_PRESENT=NO
+DIRECT_MOCK_RUNTIME_PATH_STILL_ACTIVE=YES
+ASSISTANT_RUNTIME_REGISTRY_CUTOVER_STARTED=NO
+PHASE3_IMPLEMENTATION_STARTED=NO
+T022_STARTED=NO
+```
 
 ## Phase 3 — Structured Operations and ToolDefinition Policy
 

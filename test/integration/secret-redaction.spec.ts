@@ -92,4 +92,16 @@ describe('secret redaction foundation', () => {
     expect(serialized).not.toContain('connector-secret-value');
     expect(serialized).not.toContain('db-password');
   });
+
+  it('redacts unmistakable native-credential values and their containing metadata fields', () => {
+    const nativeCredential = 'sk-native-credential-sentinel-8a971234567890';
+    const serialized = JSON.stringify(redactSecrets({
+      nativeCredential,
+      connectorPassword: 'connector-password-sentinel-18dc',
+      nested: { authorization: `Bearer ${nativeCredential}` }
+    }));
+
+    expect(serialized).not.toContain(nativeCredential);
+    expect(serialized).not.toContain('connector-password-sentinel-18dc');
+  });
 });

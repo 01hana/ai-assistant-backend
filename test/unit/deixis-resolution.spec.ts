@@ -1,26 +1,14 @@
 import { RuleBasedQueryUnderstandingPipeline } from '../../src/query-understanding/rule-based-query-understanding.pipeline';
 
-const identityContext = {
+const hostIntegrationContext = {
   requestId: 'req-deixis-001',
-  customer: {
-    customerId: 'customer-a',
-    integrationId: 'integration-erp'
-  },
-  organization: {
-    organizationId: 'org-001'
-  },
-  actor: {
-    actorId: 'actor-001',
-    roles: ['planner'],
-    permissionScopes: ['orders:read']
-  },
-  hostApp: {
-    hostApp: 'erp'
-  },
-  auth: {
-    tokenId: 'jwt-deixis-001',
-    gatewayIssuer: 'https://gateway.test.internal'
-  }
+  customerId: 'customer-a',
+  integrationId: 'integration-erp',
+  organizationId: 'org-001',
+  actorId: 'actor-001',
+  roles: ['planner'] as const,
+  permissionScopes: ['orders:read'] as const,
+  hostApp: 'erp'
 };
 
 describe('deixis resolution', () => {
@@ -32,7 +20,7 @@ describe('deixis resolution', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '這筆目前狀態？',
-      identityContext,
+      hostIntegrationContext,
       pageContext: {
         module: 'orders',
         entityType: 'order',
@@ -59,7 +47,7 @@ describe('deixis resolution', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '這張訂單目前狀態？',
-      identityContext,
+      hostIntegrationContext,
       pageContext: {
         module: 'orders',
         entityType: 'order'
@@ -85,7 +73,7 @@ describe('deixis resolution', () => {
       sessionId: 'session-001',
       messageId: 'message-003',
       text: '剛剛選取的訂單狀態？',
-      identityContext,
+      hostIntegrationContext,
       pageContext: {
         module: 'orders',
         entityType: 'order',
@@ -113,7 +101,7 @@ describe('deixis resolution', () => {
       sessionId: 'session-001',
       messageId: 'message-004',
       text: '目前這筆狀態？',
-      identityContext,
+      hostIntegrationContext,
       pageContext: {
         entityType: 'order',
         entityId: 'SO-PAGE-001'
@@ -138,7 +126,7 @@ describe('deixis resolution', () => {
       sessionId: 'session-001',
       messageId: 'message-005',
       text: '目前這筆狀態？',
-      identityContext,
+      hostIntegrationContext,
       assistantContextState: {
         currentEntityType: 'order',
         currentEntityId: 'SO-CONTEXT-001'

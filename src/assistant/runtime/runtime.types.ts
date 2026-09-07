@@ -1,10 +1,10 @@
 import { ToolCall } from '../../generated/prisma/client';
 import { RiskLevel, ToolCallStatus, ToolExecutionStatus } from '../../generated/prisma/enums';
 import { RequestIdentityContext } from '../../identity/identity-context.types';
+import { HostIntegrationContext, TransientConnectorContext } from '../../host-integration/host-integration.types';
 import { CustomerScope } from '../../identity/customer-scope.types';
 import { ConnectorExecuteResult } from '../../connectors/connector-adapter.interface';
-import { PageContextDto } from '../page-context/page-context.dto';
-import { PageEntityRef } from '../page-context/page-context.types';
+import { NormalizedPageContext, PageEntityRef } from '../page-context/page-context.types';
 import { PersistedExecutionPlan } from '../planning/assistant-planning.types';
 import { ToolPermissionDeniedReason } from '../../tools/tool-registry.types';
 
@@ -19,8 +19,10 @@ export interface AssistantReadonlyRuntimeInput {
   sourceMessageId: string;
   responseMessageId: string;
   identityContext: RequestIdentityContext;
+  hostIntegrationContext: HostIntegrationContext;
   executionPlan: PersistedExecutionPlan;
-  pageContext?: PageContextDto;
+  pageContext?: NormalizedPageContext;
+  transientConnectorContext: TransientConnectorContext;
 }
 
 export interface AssistantReadonlyRuntimeResult {

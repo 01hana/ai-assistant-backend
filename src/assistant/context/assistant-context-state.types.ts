@@ -1,11 +1,11 @@
-import { PageContextDto } from '../page-context/page-context.dto';
+import { NormalizedPageContext } from '../page-context/page-context.types';
 import { CustomerScope } from '../../identity/customer-scope.types';
 import { AssistantPlanningResult } from '../planning/assistant-planning.types';
 
 export interface UpdateAssistantContextStateInput {
   customerScope: CustomerScope;
   sessionId: string;
-  pageContext?: PageContextDto;
+  pageContext?: NormalizedPageContext;
   planningResult: AssistantPlanningResult;
   toolCallIds: string[];
   evidenceRefIds: string[];

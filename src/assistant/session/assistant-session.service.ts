@@ -4,6 +4,7 @@ import { AssistantSessionStatus } from '../../generated/prisma/enums';
 import { AuditWriterService } from '../../audit/audit-writer.service';
 import { CustomerScope } from '../../identity/customer-scope.types';
 import { createCustomerScopeFromIdentityContext } from '../../identity/customer-scope.factory';
+import { createCustomerScopeFromHostIntegrationContext } from '../../host-integration/host-integration-request.factory';
 import { customerScopedIdPredicate, customerScopedListPredicate } from '../../prisma/customer-scope.predicate';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AssistantContextStateService } from '../context/assistant-context-state.service';
@@ -27,7 +28,7 @@ export class AssistantSessionService {
   ) {}
 
   async createSession(input: CreateAssistantSessionInput): Promise<{ sessionId: string; status: AssistantSessionStatus }> {
-    const customerScope = createCustomerScopeFromIdentityContext(input.identityContext);
+    const customerScope = createCustomerScopeFromHostIntegrationContext(input.hostIntegrationContext);
     const session = await this.prisma.db.assistantSession.create({
       data: {
         customerId: customerScope.customerId,

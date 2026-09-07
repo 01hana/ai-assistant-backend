@@ -3,6 +3,7 @@ import { ExecutionDecision, RiskLevel } from '../../src/generated/prisma/enums';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { QueryUnderstandingService } from '../../src/query-understanding/query-understanding.service';
 import { AuditWriterService } from '../../src/audit/audit-writer.service';
+import { HostIntegrationRequestFactory } from '../../src/host-integration/host-integration-request.factory';
 import {
   CUSTOMER_SCOPE_FIXTURES,
   createCustomerScopeFixtureIdentityContext,
@@ -12,6 +13,7 @@ import {
 describe('AssistantPlanningService', () => {
   const identityContext = createCustomerScopeFixtureIdentityContext(CUSTOMER_SCOPE_FIXTURES.customerA);
   const customerScope = createCustomerScopeFixtureScope(CUSTOMER_SCOPE_FIXTURES.customerA);
+  const hostIntegrationContext = new HostIntegrationRequestFactory().createHostContext(identityContext);
 
   it('creates an execution plan from query-understanding output rather than raw text parsing', async () => {
     const understandAndPersist = jest.fn().mockResolvedValue({
@@ -86,7 +88,7 @@ describe('AssistantPlanningService', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: 'this raw text should not drive taskType directly',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(understandAndPersist).toHaveBeenCalled();
@@ -183,17 +185,19 @@ describe('AssistantPlanningService', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '這張訂單目前狀態？',
-      identityContext,
+      hostIntegrationContext,
       pageContext
     });
 
     expect(understandAndPersist).toHaveBeenCalledWith(
       expect.objectContaining({
         requestId: 'req-plan-002',
-        customerScope,
+        hostIntegrationContext,
         pageContext
       })
     );
+    expect(understandAndPersist.mock.calls[0][0]).not.toHaveProperty('identityContext');
+    expect(understandAndPersist.mock.calls[0][0]).not.toHaveProperty('customerScope');
   });
 
   it('maps low-confidence output into clarify decision', () => {

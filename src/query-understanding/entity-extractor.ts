@@ -1,4 +1,4 @@
-import { Prisma } from '../generated/prisma/client';
+import { NormalizedPageContext } from '../assistant/page-context/page-context.types';
 import { DEIXIS_PATTERN, getPageEntity } from './deixis-resolver';
 import {
   QueryUnderstandingContextStateSnapshot,
@@ -11,7 +11,7 @@ const SKU_PATTERN = /\bSKU-[A-Z0-9-]+\b/gi;
 
 export function extractEntityCandidates(
   text: string,
-  pageContext: Prisma.InputJsonValue | undefined,
+  pageContext: NormalizedPageContext | undefined,
   assistantContextState: QueryUnderstandingContextStateSnapshot | undefined
 ): QueryUnderstandingEntityCandidate[] {
   const entities: QueryUnderstandingEntityCandidate[] = [];

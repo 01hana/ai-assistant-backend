@@ -1,10 +1,13 @@
 import { RequestIdentityContext } from '../../identity/identity-context.types';
-import { PageContextDto } from '../page-context/page-context.dto';
+import { HostIntegrationContext, TransientConnectorContext } from '../../host-integration/host-integration.types';
+import { NormalizedPageContext } from '../page-context/page-context.types';
 
 export interface SendAssistantMessageInput {
   requestId: string;
   sessionId: string;
   message: string;
   identityContext: RequestIdentityContext;
-  pageContext?: PageContextDto;
+  hostIntegrationContext: HostIntegrationContext;
+  pageContext?: NormalizedPageContext;
+  transientConnectorContext: TransientConnectorContext;
 }
