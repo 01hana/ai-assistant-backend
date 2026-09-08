@@ -12,6 +12,7 @@ describe('ToolRegistryService', () => {
         name: 'mock.inventory.availability.lookup',
         version: '1.0.0',
         connectorKey: 'mock',
+        timeoutMs: 3000,
         requiredPermissionScopes: ['inventory:read']
       })
     );

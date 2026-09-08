@@ -50,6 +50,7 @@ describe('ToolPermissionPrecheckService', () => {
       tool: {
         id: 'tool-orders', key: 'mock.orders.status.lookup', name: 'mock.orders.status.lookup', version: '1', description: 'tool',
         operation: ToolOperation.read, riskLevel: RiskLevel.low, active: true, connectorKey: 'mock',
+        timeoutMs: 3000,
         requiredPermissionScopes: ['orders:read'], inputSchema: { required: [] }, outputSchema: { required: [] },
         hasSideEffect: false, requiresConfirmation: false, requiresApproval: false
       },

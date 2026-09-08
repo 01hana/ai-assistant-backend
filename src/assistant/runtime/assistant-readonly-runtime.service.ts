@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { RiskLevel, ToolOperation } from '../../generated/prisma/enums';
 import { ConnectorExecuteResult } from '../../connectors/connector-adapter.interface';
-import { MockConnectorAdapter } from '../../connectors/mock/mock-connector.adapter';
+import { DataAdapterRegistry } from '../../connectors/data-adapter-registry.service';
 import { AdapterResultProjectorService } from '../../connectors/adapter-result-projector.service';
 import { ToolPermissionPrecheckService } from '../../permissions/tool-permission-precheck.service';
 import { ToolRegistryService } from '../../tools/tool-registry.service';
@@ -16,10 +16,10 @@ import { ToolCallService } from './tool-call.service';
 export class AssistantReadonlyRuntimeService {
   constructor(
     private readonly toolRegistry: ToolRegistryService,
-    private readonly mockConnector: MockConnectorAdapter,
     private readonly permissionPrecheck: ToolPermissionPrecheckService,
     private readonly toolCallService: ToolCallService,
-    private readonly resultProjector: AdapterResultProjectorService
+    private readonly resultProjector: AdapterResultProjectorService,
+    private readonly dataAdapterRegistry: DataAdapterRegistry
   ) {}
 
   async execute(input: AssistantReadonlyRuntimeInput): Promise<AssistantReadonlyRuntimeResult> {
@@ -193,15 +193,41 @@ export class AssistantReadonlyRuntimeService {
       visibleFields,
       safeInputSummary: validation.safeInputSummary
     });
+    let selectedAdapter;
+    try {
+      selectedAdapter = await this.dataAdapterRegistry.select({
+        host: input.hostIntegrationContext,
+        tool,
+        operation: validation.operation
+      });
+    } catch {
+      return this.failStartedToolCall({
+        input,
+        tool,
+        toolCallId: startedToolCall.id,
+        entityRef,
+        visibleFields,
+        connectorStatus: 'failed',
+        errorCode: 'DATA_ADAPTER_UNAVAILABLE',
+        durationMs: Math.max(1, Date.now() - startedAt)
+      });
+    }
+
     let connectorResult: ConnectorExecuteResult;
     try {
-      connectorResult = await this.mockConnector.execute({
-        requestId: input.requestId,
-        organizationId: input.identityContext.organization.organizationId,
-        actorId: input.identityContext.actor.actorId,
-        toolKey: tool.key,
-        arguments: validation.operation.arguments
-      });
+      connectorResult = await executeWithTrustedTimeout(
+        () => selectedAdapter.execute({
+          requestId: input.requestId,
+          organizationId: input.hostIntegrationContext.organizationId,
+          actorId: input.hostIntegrationContext.actorId,
+          toolKey: tool.key,
+          arguments: validation.operation.arguments,
+          host: input.hostIntegrationContext,
+          operation: validation.operation,
+          transientConnectorContext: input.transientConnectorContext
+        }),
+        tool.timeoutMs
+      );
     } catch {
       return this.failStartedToolCall({
         input,
@@ -361,6 +387,41 @@ function toSafeConnectorErrorCode(result: ConnectorExecuteResult): string {
   if (result.error?.code === 'NOT_FOUND') return 'NOT_FOUND';
   if (result.status === 'permission_denied' || result.status === 'requires_approval') return result.status;
   return 'TOOL_EXECUTION_FAILED';
+}
+
+const ADAPTER_EXECUTION_TIMEOUT = Symbol('ADAPTER_EXECUTION_TIMEOUT');
+
+function executeWithTrustedTimeout<T>(execute: () => Promise<T>, timeoutMs: number): Promise<T> {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+    return Promise.reject(ADAPTER_EXECUTION_TIMEOUT);
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(ADAPTER_EXECUTION_TIMEOUT);
+    }, timeoutMs);
+
+    Promise.resolve()
+      .then(execute)
+      .then(
+        (result) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(result);
+        },
+        (error: unknown) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+  });
 }
 
 function firstPlannedCandidate(candidateTools: Prisma.JsonValue): Record<string, unknown> & { key: string } {

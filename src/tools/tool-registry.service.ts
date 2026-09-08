@@ -190,6 +190,7 @@ function normalizeToolDefinition(tool: ToolDefinition): RegisteredToolDefinition
     riskLevel: tool.riskLevel,
     active: tool.isActive,
     connectorKey: tool.connectorKey,
+    timeoutMs: tool.timeoutMs,
     requiredPermissionScopes: [...tool.requiredPermissions],
     inputSchema: normalizeJsonSchema(tool.inputSchema),
     outputSchema: normalizeJsonSchema(tool.outputSchema),

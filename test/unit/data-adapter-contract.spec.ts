@@ -10,8 +10,16 @@ import {
   DataAdapterRegistrations
 } from '../../src/connectors/data-adapter-registration';
 import { HostIntegrationContext } from '../../src/host-integration/host-integration.types';
+import { MockConnectorAdapter } from '../../src/connectors/mock/mock-connector.adapter';
 
 describe('DataAdapter contract', () => {
+  it('accepts the production Mock connector as the generic DataAdapter implementation', () => {
+    const adapter: DataAdapter = new MockConnectorAdapter();
+
+    expect(adapter.metadata.adapterKey).toBe('mock');
+    expect(adapter.metadata.supportedCapabilities).toContain('mock.inventory.availability.lookup');
+  });
+
   it('extends ConnectorAdapter with immutable capability and future execution inputs', async () => {
     const adapter = createAdapter();
     const connector: ConnectorAdapter<DataAdapterExecuteInput> = adapter;

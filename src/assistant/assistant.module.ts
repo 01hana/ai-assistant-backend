@@ -4,7 +4,6 @@ import { ApprovalsModule } from '../approvals/approvals.module';
 import { EvidenceModule } from '../evidence/evidence.module';
 import { FeedbackModule } from '../feedback/feedback.module';
 import { IdentityModule } from '../identity/identity.module';
-import { MockConnectorModule } from '../connectors/mock/mock-connector.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueryUnderstandingModule } from '../query-understanding/query-understanding.module';
@@ -40,7 +39,6 @@ import { AssistantSseEventBuilder } from './sse/assistant-sse-event.builder';
     EvidenceModule,
     FeedbackModule,
     ToolsModule,
-    MockConnectorModule,
     PermissionsModule,
     HostIntegrationModule,
     ConnectorsModule

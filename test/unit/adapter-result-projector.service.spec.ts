@@ -252,6 +252,7 @@ function toolDefinition(statusSchema: Record<string, unknown> = { type: 'string'
     riskLevel: RiskLevel.low,
     active: true,
     connectorKey: 'mock',
+    timeoutMs: 3000,
     requiredPermissionScopes: ['orders:read'],
     inputSchema: { required: ['entityId'] },
     outputSchema: {

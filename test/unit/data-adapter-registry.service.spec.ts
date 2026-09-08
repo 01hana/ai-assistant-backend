@@ -215,6 +215,7 @@ function toolDefinition(overrides: Partial<RegisteredToolDefinition> = {}): Regi
     riskLevel: RiskLevel.low,
     active: true,
     connectorKey: 'fixture-connector',
+    timeoutMs: 3000,
     requiredPermissionScopes: ['inventory:read'],
     inputSchema: { required: ['entityId'] },
     outputSchema: { required: [] },

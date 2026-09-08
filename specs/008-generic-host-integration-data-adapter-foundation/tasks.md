@@ -502,59 +502,151 @@ T040_STARTED=NO
 **Dependencies**: T014, T021, T030, and T039.  
 **Independent test**: Existing mock operations produce compatible public behavior only through exact trusted registration and the standard projection path.
 
-- [ ] T040 [RED] [US7] Extend mock DataAdapter contract tests in `test/unit/mock-connector-adapter.spec.ts` and `test/unit/data-adapter-contract.spec.ts`.
+- [x] T040 [RED] [US7] Extend mock DataAdapter contract tests in `test/unit/mock-connector-adapter.spec.ts` and `test/unit/data-adapter-contract.spec.ts`.
   - Files: The two listed unit suites.
   - Depends on: T014, T021, T030, T039.
   - Validation: Cover canonical ToolDefinition operation, validated arguments, metadata/capability compatibility, deterministic results, exact registration, no wildcard, and no fallback.
   - Guard: The mock adapter cannot own result release or receive Browser-selected connector/operation authority.
 
-- [ ] T041 [GREEN] [US7] Adapt mock implementation and registration in `src/connectors/mock/mock-connector.adapter.ts`, `src/connectors/mock/mock-connector.module.ts`, and `src/connectors/connectors.module.ts`.
+- [x] T041 [GREEN] [US7] Adapt mock implementation and registration in `src/connectors/mock/mock-connector.adapter.ts`, `src/connectors/mock/mock-connector.module.ts`, and `src/connectors/connectors.module.ts`.
   - Files: The three listed files.
   - Depends on: T040.
   - Validation: Make T040 pass and rerun existing mock fixture/adapter tests.
   - Guard: Preserve deterministic lookups; add no global registration, wildcard, special selection branch, or fallback behavior.
 
-- [ ] T042 [RED] [US7] Extend runtime ordering and lifecycle tests in `test/unit/assistant-readonly-runtime.service.spec.ts` and `test/unit/tool-permission-precheck.service.spec.ts`.
+- [x] T042 [RED] [US7] Extend runtime ordering and lifecycle tests in `test/unit/assistant-readonly-runtime.service.spec.ts` and `test/unit/tool-permission-precheck.service.spec.ts`.
   - Files: The two listed unit suites.
   - Depends on: T041.
   - Validation: Assert permission denial touches neither registry eligibility nor adapter; allowed/valid input starts ToolCall before registry/readiness/execution/projection; every later failure fails the started ToolCall.
   - Guard: Do not fetch business data before authorization or introduce a new lifecycle/public decision.
 
-- [ ] T043 [GREEN] [US7] Cut the readonly runtime over to registry/projector orchestration in `src/assistant/runtime/assistant-readonly-runtime.service.ts` while retaining obsolete direct mock wiring until equivalence is proven.
+- [x] T043 [GREEN] [US7] Cut the readonly runtime over to registry/projector orchestration in `src/assistant/runtime/assistant-readonly-runtime.service.ts` while retaining obsolete direct mock wiring until equivalence is proven.
   - Files: The listed runtime service only, plus required existing runtime types already approved.
   - Depends on: T042.
   - Validation: Make T042 pass and run `npm run typecheck`.
   - Guard: No `if customer`, `if hostApp`, mock connector-key branch, fallback adapter, or transient-reference registry input.
 
-- [ ] T044 [RED] [US7] Add end-to-end runtime failure/equivalence cases in proposed `test/integration/feature008-runtime-cutover.spec.ts`.
+- [x] T044 [RED] [US7] Add end-to-end runtime failure/equivalence cases in proposed `test/integration/feature008-runtime-cutover.spec.ts`.
   - Files: `test/integration/feature008-runtime-cutover.spec.ts` (new).
   - Depends on: T043.
   - Validation: Cover missing/ambiguous registration, incompatibility, unhealthy readiness, timeout, throw, malformed result, projection or masking/minimization failure, no evidence, success, no fallback, and public safe mappings.
   - Guard: Use deterministic doubles and mock fixtures only; no real Customer endpoint, credential, network, or data.
 
-- [ ] T045 [GREEN] [US7] Complete runtime composition in `src/assistant/assistant.module.ts`, `src/connectors/connectors.module.ts`, `src/connectors/mock/mock-connector.module.ts`, and `test/support/us1-test-app.helper.ts`.
+- [x] T045 [GREEN] [US7] Complete runtime composition in `src/assistant/assistant.module.ts`, `src/connectors/connectors.module.ts`, `src/connectors/mock/mock-connector.module.ts`, and `test/support/us1-test-app.helper.ts`.
   - Files: The four listed files.
   - Depends on: T044.
   - Validation: Make T044 pass; run module/provider tests and relevant authorized/denied/failure integrations.
   - Guard: Keep one Assistant runtime and one connector domain; no Customer/host/source-specific core branching or second Assistant API.
 
-- [ ] T046 [VERIFY] [US7] Prove generic-path equivalence through `test/integration/authorized-tool-execution.spec.ts`, `test/integration/authorized-evidence-answer.spec.ts`, `test/integration/tool-execution-failed-sse.spec.ts`, `test/integration/tool-failure-safe-response.spec.ts`, and `test/contract/assistant-messages-sse.contract.spec.ts`.
+- [x] T046 [VERIFY] [US7] Prove generic-path equivalence through `test/integration/authorized-tool-execution.spec.ts`, `test/integration/authorized-evidence-answer.spec.ts`, `test/integration/tool-execution-failed-sse.spec.ts`, `test/integration/tool-failure-safe-response.spec.ts`, and `test/contract/assistant-messages-sse.contract.spec.ts`.
   - Files: The five listed suites; no source edits in this task.
   - Depends on: T045.
   - Validation: Verify deterministic mock output, ToolCall lifecycle, NoAnswerGate, AnswerDecision, EvidenceRef, SSE, unknown/ambiguous failure, and no mock fallback.
   - Guard: T047 is blocked unless every equivalence and public-contract assertion passes unchanged.
 
-- [ ] T047 [REFACTOR] [US7] Remove obsolete direct MockConnectorAdapter runtime injection from `src/assistant/runtime/assistant-readonly-runtime.service.ts`, `src/assistant/assistant.module.ts`, and `src/connectors/mock/mock-connector.module.ts`.
+- [x] T047 [REFACTOR] [US7] Remove obsolete direct MockConnectorAdapter runtime injection from `src/assistant/runtime/assistant-readonly-runtime.service.ts`, `src/assistant/assistant.module.ts`, and `src/connectors/mock/mock-connector.module.ts`.
   - Files: The three listed production files.
   - Depends on: T046.
   - Validation: Rerun T046 suites, provider-resolution tests, `npm run typecheck`, and `npm run build`.
   - Guard: Remove only obsolete direct wiring; do not add a temporary fallback, feature flag, alternate path, or behavior change.
 
-- [ ] T048 [VERIFY] [US7] Record the Phase 5 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+- [x] T048 [VERIFY] [US7] Record the Phase 5 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: This task file for evidence; Phase 5 files are validation inputs only.
   - Depends on: T047.
   - Validation: Run all Phase 5 unit/integration/contract suites and inspect constructor/module wiring for direct mock injection.
   - Guard: Report `MOCK_GENERIC_REGISTRY_PATH=PASS`, `DIRECT_MOCK_RUNTIME_INJECTION_REMOVED=YES`, `TOOLCALL_LIFECYCLE_REGRESSION=PASS`, and `PUBLIC_MOCK_BEHAVIOR_COMPATIBLE=YES` only after equivalence remains green.
+
+### 2026-09-08 Phase 5 T040–T048 execution evidence
+
+- T040 genuine RED was observed with 2/2 suites failing TypeScript compilation because `MockConnectorAdapter` lacked the required DataAdapter metadata/compatibility contract and exact registration exports. T041 GREEN passed with 2/2 suites and 8/8 tests; the unchanged mock fixture suite subsequently passed with 1/1 suite and 3/3 tests.
+- T042 genuine RED was observed with the runtime suite failing compilation because `AssistantReadonlyRuntimeService` still accepted five constructor dependencies and had no `DataAdapterRegistry` seam; the independent permission-precheck suite passed 3/3. T043 GREEN passed with 2/2 suites and 24/24 tests plus typecheck. The direct Mock provider remained temporarily injectable but runtime execution used only the selected adapter.
+- T044 genuine RED was observed after test authoring because `Us1TestAppOptions` had no `dataAdapterRegistrations` override seam. T045 GREEN completed single-module composition and passed the final cutover integration with 1/1 suite and 13/13 tests. It covers exact success, missing/ambiguous/incompatible/unhealthy selection, permission and invalid-input short circuits, returned/thrown/malformed failures, result-policy/projection/completion failures, safe evidence/answer success, and transient-reference isolation.
+- T046 passed unchanged with 5/5 equivalence/public-contract suites and 11/11 tests before direct injection removal. After T047 removed the readonly runtime constructor dependency and AssistantModule direct import, the permitted local-listener regression rerun passed with 7/7 suites and 35/35 tests; typecheck and build passed.
+- T048 final validation passed with 7/7 required unit suites and 57/57 tests, 8/8 required integration suites and 23/23 tests, and the Assistant messages/SSE contract with 1/1 suite and 6/6 tests. Typecheck, build, ESLint over every changed Phase 5 TypeScript file, and `git diff --check` passed. The sandboxed post-T047 listener run encountered only `listen EPERM`; the identical permitted rerun passed.
+- A supplemental regression for the compile-required approval caller initially exposed Jest spy leakage between separately created test applications because the production mock is now an exported singleton. The approved test composition helper now supplies one isolated mock instance per test app and a frozen copy of the same two exact bindings. Both approval/idempotency regressions then passed with 2/2 suites and 7/7 tests; production registration and approval behavior were unchanged.
+- The mock DataAdapter is shared by two frozen exact registrations (`customer-a` and `customer-b`, both `integration-erp / erp / mock`). Registration records contain only the six approved fields. No wildcard, default, fallback, Browser authority, duplicate production provider, or Assistant customer/host/mock branch was introduced. The side-effect approval caller received only a compile-required trusted input-shape update; approval behavior and public contracts were not redesigned.
+
+```text
+T040_RED_OBSERVED=YES
+T040_STATUS=PASS
+T041_STATUS=PASS
+T042_RED_OBSERVED=YES
+T042_STATUS=PASS
+T043_STATUS=PASS
+T044_RED_OBSERVED=YES
+T044_STATUS=PASS
+T045_STATUS=PASS
+T046_STATUS=PASS
+T047_STATUS=PASS
+T048_STATUS=PASS
+MOCK_GENERIC_REGISTRY_PATH=PASS
+DIRECT_MOCK_RUNTIME_PROVIDER_PRESENT_AFTER_T043=YES
+DIRECT_MOCK_RUNTIME_EXECUTION_USED_AFTER_T043=NO
+DIRECT_MOCK_RUNTIME_INJECTION_REMOVED=YES
+PERMISSION_BEFORE_REGISTRY=YES
+STRUCTURED_INPUT_BEFORE_REGISTRY=YES
+TOOLCALL_START_BEFORE_REGISTRY=YES
+REGISTRY_BEFORE_ADAPTER_EXECUTION=YES
+READINESS_BEFORE_EXECUTION=YES
+PROJECTOR_AFTER_EXECUTION=YES
+MOCK_FALLBACK_PRESENT=NO
+CUSTOMER_BRANCH_PRESENT=NO
+HOSTAPP_BRANCH_PRESENT=NO
+CONNECTOR_CONTEXT_REF_USED_FOR_SELECTION=NO
+CONNECTOR_CONTEXT_REF_REACHES_SELECTED_ADAPTER_ONLY=YES
+TOOLCALL_LIFECYCLE_REGRESSION=PASS
+PUBLIC_MOCK_BEHAVIOR_COMPATIBLE=YES
+TIMEOUT_SEAM_PRESENT=NO
+SECOND_TIMEOUT_SUBSYSTEM_ADDED=NO
+PRISMA_SCHEMA_MODIFIED=NO
+PRISMA_MIGRATION_CREATED=NO
+SEED_POLICY_DATA_MODIFIED=NO
+TYPECHECK=PASS
+BUILD=PASS
+MODIFIED_FILE_LINT=PASS
+DIFF_CHECK=PASS
+T049_STARTED=NO
+PHASE6_IMPLEMENTATION_STARTED=NO
+PHASE5_STATUS=PASS
+```
+
+### Phase 5 trusted ToolDefinition timeout correction discovered by human review — 2026-09-08
+
+- Human review confirmed that the core registry cutover remained valid but T044 originally omitted its required adapter-execution timeout case. The original Phase 5 evidence above is preserved verbatim; this corrected checkpoint supersedes only its timeout conclusion and final T048 result.
+- A genuine timeout RED was observed with 1/1 cutover suite failing its new case (13 passed, 1 failed): trusted `timeoutMs=5` was dropped by `RegisteredToolDefinition`, so the runtime waited approximately 52 ms for a delayed adapter and completed the ToolCall successfully.
+- `ToolDefinition.timeoutMs` is now carried unchanged through `ToolRegistryService` as required `RegisteredToolDefinition.timeoutMs` and is the single timeout authority. The readonly runtime starts the timer only after ToolCall start and registry selection/readiness, directly around selected-adapter execution. Invalid non-positive/non-safe values fail closed after ToolCall start. No environment, Browser, Customer, registration, adapter-owned, or fallback timeout source was added.
+- The corrected timeout case passed with 1/1 suite and 14/14 tests. It proves the started ToolCall fails with bounded `TOOL_EXECUTION_FAILED`, creates no EvidenceRef or `GroundedAnswerInput`, retains the existing public `no_answer` / `tool_failure` mapping, and ignores a delayed private success after logical timeout without any later state or response mutation.
+- Corrected full validation passed with 8/8 unit suites and 90/90 tests (the seven required Phase 5 suites plus ToolRegistry), 8/8 required integration suites and 24/24 tests, approval/idempotency regressions with 2/2 suites and 7/7 tests, projector/side-effect-contract compile fixtures with 2/2 suites and 25/25 tests, and the Assistant messages/SSE contract with 1/1 suite and 6/6 tests. Typecheck, build, changed-file ESLint, and `git diff --check` passed.
+- The readonly Assistant runtime remains registry-only. Existing direct `MockConnectorAdapter` use in `SideEffectExecutionGuardService` remains present and unchanged as the accepted out-of-scope approval/write path; Feature 008 did not migrate it.
+
+```text
+CORRECTION=FEATURE008_PHASE5_TRUSTED_TIMEOUT
+T044_TIMEOUT_RED_OBSERVED=YES
+T044_TIMEOUT_STATUS=PASS
+TIMEOUT_SINGLE_AUTHORITY=ToolDefinition.timeoutMs
+TRUSTED_TOOL_TIMEOUT_READY=YES
+TIMEOUT_SEAM_PRESENT=YES
+SECOND_TIMEOUT_CONFIG_AUTHORITY_PRESENT=NO
+TIMEOUT_AFTER_TOOLCALL_START_FAILED=YES
+TIMEOUT_CREATES_EVIDENCE=NO
+TIMEOUT_CREATES_GROUNDED_INPUT=NO
+TIMEOUT_PUBLIC_MAPPING_SAFE=YES
+LATE_ADAPTER_COMPLETION_CHANGES_RESULT=NO
+DIRECT_MOCK_READONLY_RUNTIME_INJECTION_REMOVED=YES
+SIDE_EFFECT_APPROVAL_DIRECT_MOCK_PATH_PRESENT=YES
+SIDE_EFFECT_APPROVAL_PATH_MIGRATED_BY_FEATURE008=NO
+SIDE_EFFECT_APPROVAL_SCOPE_RECONCILIATION=PASS
+MOCK_GENERIC_REGISTRY_PATH=PASS
+TOOLCALL_LIFECYCLE_REGRESSION=PASS
+PUBLIC_MOCK_BEHAVIOR_COMPATIBLE=YES
+TYPECHECK=PASS
+BUILD=PASS
+MODIFIED_FILE_LINT=PASS
+DIFF_CHECK=PASS
+T048_CORRECTED_STATUS=PASS
+T049_STARTED=NO
+PHASE5_CORRECTED_STATUS=PASS
+```
 
 ## Phase 6 — Grounded Answer, Security, and Public Closeout
 

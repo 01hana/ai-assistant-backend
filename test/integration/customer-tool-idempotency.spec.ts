@@ -90,7 +90,7 @@ function validSession(customerId: string) {
 }
 
 function sideEffectTool(): RegisteredToolDefinition {
-  return { id: 'tool-definition-orders-001', key: 'mock.orders.status.update', name: 'mock.orders.status.update', version: '1.0.0', description: 'test', operation: ToolOperation.update, riskLevel: RiskLevel.medium, active: true, connectorKey: 'mock', requiredPermissionScopes: ['orders:update'], inputSchema: { required: [] }, outputSchema: { required: [] }, hasSideEffect: true, requiresConfirmation: true, requiresApproval: false };
+  return { id: 'tool-definition-orders-001', key: 'mock.orders.status.update', name: 'mock.orders.status.update', version: '1.0.0', description: 'test', operation: ToolOperation.update, riskLevel: RiskLevel.medium, active: true, connectorKey: 'mock', timeoutMs: 3000, requiredPermissionScopes: ['orders:update'], inputSchema: { required: [] }, outputSchema: { required: [] }, hasSideEffect: true, requiresConfirmation: true, requiresApproval: false };
 }
 
 function sideEffectInput(customerId: string) {

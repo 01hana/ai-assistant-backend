@@ -8,18 +8,33 @@ import {
   DataAdapterRegistrations
 } from '../../src/connectors/data-adapter-registration';
 import { DataAdapterRegistry } from '../../src/connectors/data-adapter-registry.service';
+import { AdapterResultProjectorService } from '../../src/connectors/adapter-result-projector.service';
+import { ConnectorsModule } from '../../src/connectors/connectors.module';
+import { PermissionsModule } from '../../src/permissions/permissions.module';
 import {
-  ConnectorsModule,
-  EMPTY_DATA_ADAPTER_REGISTRATIONS
-} from '../../src/connectors/connectors.module';
+  MOCK_CONNECTOR_ADAPTER,
+  MOCK_DATA_ADAPTER_REGISTRATIONS,
+  MockConnectorModule
+} from '../../src/connectors/mock/mock-connector.module';
+import { AppConfigModule } from '../../src/common/config/app-config.module';
 
 describe('ConnectorsModule', () => {
-  it('provides and exports one frozen explicit empty registration array', async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [ConnectorsModule] }).compile();
+  it('provides and exports one frozen explicit exact mock registration array', async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppConfigModule, ConnectorsModule] }).compile();
     const registrations = moduleRef.get<DataAdapterRegistrations>(DATA_ADAPTER_REGISTRATIONS);
 
-    expect(registrations).toBe(EMPTY_DATA_ADAPTER_REGISTRATIONS);
-    expect(registrations).toEqual([]);
+    expect(registrations).toBe(MOCK_DATA_ADAPTER_REGISTRATIONS);
+    expect(registrations).toHaveLength(2);
+    expect(registrations.map(({ customerId, integrationId, hostApp, connectorKey }) => ({
+      customerId,
+      integrationId,
+      hostApp,
+      connectorKey
+    }))).toEqual([
+      { customerId: 'customer-a', integrationId: 'integration-erp', hostApp: 'erp', connectorKey: 'mock' },
+      { customerId: 'customer-b', integrationId: 'integration-erp', hostApp: 'erp', connectorKey: 'mock' }
+    ]);
+    expect(registrations.every((registration) => registration.adapter === MOCK_CONNECTOR_ADAPTER)).toBe(true);
     expect(Object.isFrozen(registrations)).toBe(true);
     expect(moduleRef.get(DataAdapterRegistry)).toBeInstanceOf(DataAdapterRegistry);
   });
@@ -33,12 +48,12 @@ describe('ConnectorsModule', () => {
 
     expect(registrationProviders).toHaveLength(1);
     expect(Object.keys(registrationProviders[0]).sort()).toEqual(['provide', 'useValue']);
-    expect(registrationProviders[0].useValue).toBe(EMPTY_DATA_ADAPTER_REGISTRATIONS);
+    expect(registrationProviders[0].useValue).toBe(MOCK_DATA_ADAPTER_REGISTRATIONS);
     expect(registrationProviders[0]).not.toHaveProperty('multi');
     expect(registrationProviders[0]).not.toHaveProperty('useFactory');
     expect(registrationProviders[0]).not.toHaveProperty('useClass');
-    expect(imports).toEqual([]);
-    expect(providers).toEqual([registrationProviders[0], DataAdapterRegistry]);
+    expect(imports).toEqual([PermissionsModule, MockConnectorModule]);
+    expect(providers).toEqual([registrationProviders[0], DataAdapterRegistry, AdapterResultProjectorService]);
   });
 
   it('preserves an explicitly overridden duplicate array so the registry fails ambiguous', async () => {
@@ -48,7 +63,7 @@ describe('ConnectorsModule', () => {
       registration(first),
       registration(second)
     ]);
-    const moduleRef = await Test.createTestingModule({ imports: [ConnectorsModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [AppConfigModule, ConnectorsModule] })
       .overrideProvider(DATA_ADAPTER_REGISTRATIONS)
       .useValue(duplicateRegistrations)
       .compile();
@@ -81,6 +96,7 @@ function selection() {
     riskLevel: RiskLevel.low,
     active: true,
     connectorKey: 'fixture-connector',
+    timeoutMs: 3000,
     requiredPermissionScopes: ['inventory:read'],
     inputSchema: { required: ['entityId'] },
     outputSchema: { required: [] },

@@ -22,9 +22,11 @@ describe('AssistantReadonlyRuntimeService', () => {
     });
     const startToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-001' } });
     const completeToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-001' } });
+    const registrySelect = jest.fn().mockResolvedValue({ execute: connectorExecute });
     const projectedResult = safeProjectedResult({ status: 'picking' });
     const service = createRuntimeService({
       connectorExecute,
+      registrySelect,
       startToolCall,
       completeToolCall,
       projectorProject: jest.fn().mockReturnValue({ projected: true, result: projectedResult })
@@ -39,6 +41,7 @@ describe('AssistantReadonlyRuntimeService', () => {
         operation: 'mock.orders.cancel'
       }
     ];
+    input.transientConnectorContext = Object.freeze({ connectorContextRef: 'ccr_phase5_selected_only' });
     const result = await service.execute(input);
 
     expect(startToolCall).toHaveBeenCalledWith(
@@ -52,15 +55,29 @@ describe('AssistantReadonlyRuntimeService', () => {
         }
       })
     );
-    expect(connectorExecute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        toolKey: 'mock.orders.status.lookup',
+    expect(registrySelect).toHaveBeenCalledWith({
+      host: input.hostIntegrationContext,
+      tool: registeredTool(),
+      operation: {
+        canonicalToolKey: 'mock.orders.status.lookup',
+        schemaVersion: '1.0.0',
         arguments: { entityId: 'SO-10002' }
-      })
-    );
+      }
+    });
+    expect(JSON.stringify(registrySelect.mock.calls)).not.toContain('ccr_phase5_selected_only');
+    expect(connectorExecute).toHaveBeenCalledWith(expect.objectContaining({
+      host: input.hostIntegrationContext,
+      operation: expect.objectContaining({
+        canonicalToolKey: 'mock.orders.status.lookup',
+        arguments: { entityId: 'SO-10002' }
+      }),
+      transientConnectorContext: input.transientConnectorContext
+    }));
     expect(JSON.stringify(startToolCall.mock.calls)).not.toContain('SO-10002');
     expect(JSON.stringify(startToolCall.mock.calls)).not.toContain('mock.orders.cancel');
     expect(startToolCall.mock.invocationCallOrder[0]).toBeLessThan(connectorExecute.mock.invocationCallOrder[0]);
+    expect(startToolCall.mock.invocationCallOrder[0]).toBeLessThan(registrySelect.mock.invocationCallOrder[0]);
+    expect(registrySelect.mock.invocationCallOrder[0]).toBeLessThan(connectorExecute.mock.invocationCallOrder[0]);
     expect(completeToolCall).toHaveBeenCalledWith(
       expect.objectContaining({
         toolCallId: 'tool-call-001',
@@ -78,11 +95,13 @@ describe('AssistantReadonlyRuntimeService', () => {
     'blocks the tool call and does not call the connector when registry resolution fails with %s',
     async (deniedReason) => {
       const connectorExecute = jest.fn();
+      const registrySelect = jest.fn();
       const recordDenied = jest.fn();
       const blockToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-blocked-001' } });
       const service = createRuntimeService({
         registryResult: { deniedReason },
         connectorExecute,
+        registrySelect,
         recordDenied,
         blockToolCall
       });
@@ -90,6 +109,7 @@ describe('AssistantReadonlyRuntimeService', () => {
       const result = await service.execute(runtimeInput());
 
       expect(connectorExecute).not.toHaveBeenCalled();
+      expect(registrySelect).not.toHaveBeenCalled();
       expect(recordDenied).toHaveBeenCalledWith(expect.objectContaining({ deniedReason }));
       expect(blockToolCall).toHaveBeenCalledWith(expect.objectContaining({ deniedReason }));
       expect(result.toolCallId).toBe('tool-call-blocked-001');
@@ -100,6 +120,7 @@ describe('AssistantReadonlyRuntimeService', () => {
 
   it('blocks the tool call and does not call the connector when input schema validation fails', async () => {
     const connectorExecute = jest.fn();
+    const registrySelect = jest.fn();
     const recordDenied = jest.fn();
     const blockToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-blocked-schema' } });
     const service = createRuntimeService({
@@ -109,6 +130,7 @@ describe('AssistantReadonlyRuntimeService', () => {
         schemaErrorReason: 'missing_required_entityId'
       },
       connectorExecute,
+      registrySelect,
       recordDenied,
       blockToolCall
     });
@@ -116,6 +138,7 @@ describe('AssistantReadonlyRuntimeService', () => {
     const result = await service.execute(runtimeInput());
 
     expect(connectorExecute).not.toHaveBeenCalled();
+    expect(registrySelect).not.toHaveBeenCalled();
     expect(recordDenied).toHaveBeenCalledWith(
       expect.objectContaining({
         deniedReason: 'schema_invalid',
@@ -129,6 +152,7 @@ describe('AssistantReadonlyRuntimeService', () => {
 
   it('blocks malformed candidate arguments before ToolCall start or connector execution', async () => {
     const connectorExecute = jest.fn();
+    const registrySelect = jest.fn();
     const startToolCall = jest.fn();
     const blockToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-blocked-unsafe' } });
     const service = createRuntimeService({
@@ -138,6 +162,7 @@ describe('AssistantReadonlyRuntimeService', () => {
         schemaErrorReason: 'prohibited_argument'
       },
       connectorExecute,
+      registrySelect,
       startToolCall,
       blockToolCall
     });
@@ -155,6 +180,7 @@ describe('AssistantReadonlyRuntimeService', () => {
 
     expect(startToolCall).not.toHaveBeenCalled();
     expect(connectorExecute).not.toHaveBeenCalled();
+    expect(registrySelect).not.toHaveBeenCalled();
     expect(blockToolCall).toHaveBeenCalledWith(expect.objectContaining({ deniedReason: 'schema_invalid' }));
     expect(JSON.stringify(blockToolCall.mock.calls)).not.toContain('ccr_runtime_secret');
     expect(result.toolLifecycle).toBe('blocked');
@@ -162,6 +188,7 @@ describe('AssistantReadonlyRuntimeService', () => {
 
   it('blocks the tool call and does not call the connector when permission pre-check denies execution', async () => {
     const connectorExecute = jest.fn();
+    const registrySelect = jest.fn();
     const blockToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-blocked-permission' } });
     const service = createRuntimeService({
       permission: {
@@ -170,15 +197,72 @@ describe('AssistantReadonlyRuntimeService', () => {
         missingScopes: ['orders:read']
       },
       connectorExecute,
+      registrySelect,
       blockToolCall
     });
 
     const result = await service.execute(runtimeInput());
 
     expect(connectorExecute).not.toHaveBeenCalled();
+    expect(registrySelect).not.toHaveBeenCalled();
     expect(blockToolCall).toHaveBeenCalledWith(expect.objectContaining({ deniedReason: 'missing_scope' }));
     expect(result.toolLifecycle).toBe('blocked');
     expect(result.deniedReason).toBe('missing_scope');
+  });
+
+  it('fails the started ToolCall with a bounded code when trusted registry selection fails', async () => {
+    const connectorExecute = jest.fn();
+    const completeToolCall = jest.fn();
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-failed-registry' } });
+    const registrySelect = jest.fn().mockRejectedValue(new Error('PRIVATE_ADAPTER_INVENTORY_SENTINEL'));
+    const service = createRuntimeService({
+      connectorExecute,
+      registrySelect,
+      completeToolCall,
+      failToolCall
+    });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(connectorExecute).not.toHaveBeenCalled();
+    expect(completeToolCall).not.toHaveBeenCalled();
+    expect(failToolCall).toHaveBeenCalledWith(expect.objectContaining({
+      errorCode: 'DATA_ADAPTER_UNAVAILABLE'
+    }));
+    expect(JSON.stringify({ calls: failToolCall.mock.calls, result })).not.toContain('PRIVATE_ADAPTER_INVENTORY_SENTINEL');
+    expect(result).toEqual(expect.objectContaining({
+      toolCallId: 'tool-call-failed-registry',
+      toolLifecycle: 'failed',
+      connectorErrorCode: 'DATA_ADAPTER_UNAVAILABLE'
+    }));
+  });
+
+  it('fails closed after ToolCall start when the trusted timeout configuration is invalid', async () => {
+    const connectorExecute = jest.fn();
+    const startToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-invalid-timeout' } });
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-invalid-timeout' } });
+    const service = createRuntimeService({
+      registryResult: {
+        resolved: {
+          tool: { ...registeredTool(), timeoutMs: 0 },
+          requiredRoles: [],
+          requiredPermissionScopes: []
+        }
+      },
+      connectorExecute,
+      startToolCall,
+      failToolCall
+    });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(startToolCall).toHaveBeenCalled();
+    expect(connectorExecute).not.toHaveBeenCalled();
+    expect(failToolCall).toHaveBeenCalledWith(expect.objectContaining({ errorCode: 'TOOL_EXECUTION_FAILED' }));
+    expect(result).toEqual(expect.objectContaining({
+      toolLifecycle: 'failed',
+      connectorErrorCode: 'TOOL_EXECUTION_FAILED'
+    }));
   });
 
   it('fails an in-progress tool call when the connector returns a failed result', async () => {
@@ -330,7 +414,7 @@ describe('AssistantReadonlyRuntimeService', () => {
     expect(harness.toolCallService.completeToolCall).not.toHaveBeenCalled();
     expect(harness.toolCallService.failToolCall).not.toHaveBeenCalled();
     expect(harness.toolCallService.blockToolCall).not.toHaveBeenCalled();
-    expect(harness.connector.execute).not.toHaveBeenCalled();
+    expect(harness.dataAdapterRegistry.select).not.toHaveBeenCalled();
   });
 });
 
@@ -510,6 +594,7 @@ function createRuntimeService(overrides?: {
   validation?: { valid: true } | { valid: false; deniedReason: 'schema_invalid'; schemaErrorReason: string };
   permission?: { allowed: true } | { allowed: false; reason: ToolPermissionDeniedReason; missingScopes?: string[] };
   connectorExecute?: jest.Mock;
+  registrySelect?: jest.Mock;
   recordDenied?: jest.Mock;
   startToolCall?: jest.Mock;
   completeToolCall?: jest.Mock;
@@ -517,6 +602,19 @@ function createRuntimeService(overrides?: {
   blockToolCall?: jest.Mock;
   projectorProject?: jest.Mock;
 }) {
+  const selectedAdapterExecute = overrides?.connectorExecute ?? jest.fn().mockResolvedValue({
+    status: 'succeeded',
+    data: {
+      orderId: 'SO-10001',
+      status: 'picking',
+      amount: 128000
+    }
+  });
+  const registrySelect = overrides?.registrySelect ?? jest.fn();
+  if (!overrides?.registrySelect) {
+    registrySelect.mockResolvedValue({ execute: selectedAdapterExecute });
+  }
+
   return new AssistantReadonlyRuntimeService(
     {
       resolveToolForCustomer: jest.fn().mockResolvedValue(overrides?.registryResult ?? { resolved: { tool: registeredTool(), requiredRoles: [], requiredPermissionScopes: [] } }),
@@ -555,18 +653,6 @@ function createRuntimeService(overrides?: {
       })
     } as never,
     {
-      execute:
-        overrides?.connectorExecute ??
-        jest.fn().mockResolvedValue({
-          status: 'succeeded',
-          data: {
-            orderId: 'SO-10001',
-            status: 'picking',
-            amount: 128000
-          }
-        })
-    } as never,
-    {
       checkResolvedCustomerTool: jest.fn().mockResolvedValue(overrides?.permission ?? { allowed: true }),
       recordRuntimeCustomerToolDenied: overrides?.recordDenied ?? jest.fn()
     } as never,
@@ -580,7 +666,8 @@ function createRuntimeService(overrides?: {
       project:
         overrides?.projectorProject ??
         jest.fn().mockReturnValue({ projected: true, result: safeProjectedResult({ status: 'picking' }) })
-    } as never
+    } as never,
+    { select: registrySelect } as never
   );
 }
 
@@ -595,6 +682,7 @@ function registeredTool(): RegisteredToolDefinition {
     riskLevel: RiskLevel.low,
     active: true,
     connectorKey: 'mock',
+    timeoutMs: 3000,
     requiredPermissionScopes: ['orders:read'],
     inputSchema: {
       required: ['entityId']
@@ -677,7 +765,7 @@ function createMismatchRuntimeHarness() {
     isExecutableReadOnly: jest.fn(),
     validateInput: jest.fn()
   };
-  const connector = { execute: jest.fn() };
+  const dataAdapterRegistry = { select: jest.fn() };
   const permissionPrecheck = {
     checkResolvedCustomerTool: jest.fn(),
     recordRuntimeCustomerToolDenied: jest.fn()
@@ -692,13 +780,13 @@ function createMismatchRuntimeHarness() {
   return {
     service: new AssistantReadonlyRuntimeService(
       toolRegistry as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[0],
-      connector as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[1],
-      permissionPrecheck as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[2],
-      toolCallService as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[3],
-      { project: jest.fn() } as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[4]
+      permissionPrecheck as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[1],
+      toolCallService as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[2],
+      { project: jest.fn() } as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[3],
+      dataAdapterRegistry as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[4]
     ),
     toolRegistry,
-    connector,
+    dataAdapterRegistry,
     permissionPrecheck,
     toolCallService
   };

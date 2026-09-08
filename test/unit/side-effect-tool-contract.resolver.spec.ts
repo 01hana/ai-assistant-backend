@@ -105,6 +105,7 @@ function createTool(input: Partial<RegisteredToolDefinition> & Pick<RegisteredTo
     riskLevel: input.riskLevel ?? RiskLevel.medium,
     active: input.active ?? true,
     connectorKey: 'mock',
+    timeoutMs: input.timeoutMs ?? 3000,
     requiredPermissionScopes: input.requiredPermissionScopes ?? ['orders:update'],
     inputSchema: { required: ['entityId'] },
     outputSchema: { required: [] },

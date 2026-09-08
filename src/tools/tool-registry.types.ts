@@ -31,6 +31,7 @@ export interface RegisteredToolDefinition {
   riskLevel: RiskLevel;
   active: boolean;
   connectorKey: string;
+  timeoutMs: number;
   requiredPermissionScopes: string[];
   inputSchema: ToolJsonSchema;
   outputSchema: ToolJsonSchema;

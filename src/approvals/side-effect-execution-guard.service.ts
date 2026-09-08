@@ -150,15 +150,29 @@ export class SideEffectExecutionGuardService {
       throw this.notFound();
     }
 
+    const connectorArguments = { entityId: input.entityId };
     const connectorResult = await this.mockConnector.execute({
       requestId: input.requestId,
       organizationId: customerScope.organizationId,
       actorId: customerScope.actorId,
       toolKey: tool.key,
-      arguments: {
-        entityId: input.entityId
-      },
-      idempotencyKey: input.idempotencyKey
+      arguments: connectorArguments,
+      idempotencyKey: input.idempotencyKey,
+      host: Object.freeze({
+        customerId: input.identityContext.customer.customerId,
+        integrationId: input.identityContext.customer.integrationId,
+        hostApp: input.identityContext.hostApp.hostApp,
+        organizationId: input.identityContext.organization.organizationId,
+        actorId: input.identityContext.actor.actorId,
+        roles: Object.freeze([...input.identityContext.actor.roles]),
+        permissionScopes: Object.freeze([...input.identityContext.actor.permissionScopes]),
+        requestId: input.identityContext.requestId
+      }),
+      operation: Object.freeze({
+        canonicalToolKey: tool.key,
+        schemaVersion: tool.version,
+        arguments: Object.freeze(connectorArguments)
+      })
     });
 
     const durationMs = Math.max(1, Date.now() - startedAt);

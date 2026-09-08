@@ -41,6 +41,7 @@ import {
   InternalIdentityTestConfig
 } from './internal-identity-test-module.helper';
 import { isValidNormalizedKnowledgeDocumentAccessPolicy } from '../../src/retrieval/knowledge-access-policy.types';
+import { DataAdapterRegistrations } from '../../src/connectors/data-adapter-registration';
 
 type SessionRecord = {
   id: string;
@@ -434,6 +435,7 @@ export type Us1TestAppOptions = {
   /** Retains the production remote-JWKS verifier for transport-level identity tests. */
   internalIdentityVerifierMode?: 'static' | 'remote';
   forceMessageServiceErrorForSessionId?: string;
+  dataAdapterRegistrations?: DataAdapterRegistrations;
 };
 
 export async function createUs1TestAppWithState(
@@ -461,12 +463,14 @@ export async function createUs1TestAppWithState(
   });
 
   const { AppModule } = await import('../../src/app.module');
-  const { ConnectorsModule } = await import('../../src/connectors/connectors.module');
+  const { DATA_ADAPTER_REGISTRATIONS } = await import('../../src/connectors/data-adapter-registration');
+  const { MOCK_DATA_ADAPTER_REGISTRATIONS } = await import('../../src/connectors/mock/mock-connector.module');
+  const { MockConnectorAdapter } = await import('../../src/connectors/mock/mock-connector.adapter');
   const { createStaticInternalIdentityTokenVerifier } = await import('../../src/identity/internal-identity-token-verifier');
   const { INTERNAL_IDENTITY_CONFIG, INTERNAL_IDENTITY_TOKEN_VERIFIER } = await import('../../src/identity/identity-token.types');
   const { PrismaService } = await import('../../src/prisma/prisma.service');
   const builder = Test.createTestingModule({
-    imports: [AppModule, ConnectorsModule],
+    imports: [AppModule],
     providers: [{ provide: INTERNAL_IDENTITY_TEST_CONFIG, useValue: internalIdentity }]
   })
     .overrideProvider(INTERNAL_IDENTITY_CONFIG)
@@ -482,10 +486,20 @@ export async function createUs1TestAppWithState(
       onModuleDestroy: jest.fn(),
       db: prismaMock
     });
+  const testMockAdapter = new MockConnectorAdapter();
+  const testMockRegistrations: DataAdapterRegistrations = Object.freeze(
+    MOCK_DATA_ADAPTER_REGISTRATIONS.map((registration) => Object.freeze({
+      ...registration,
+      adapter: testMockAdapter
+    }))
+  );
+  builder.overrideProvider(MockConnectorAdapter).useValue(testMockAdapter);
   if (options.internalIdentityVerifierMode !== 'remote') {
     builder.overrideProvider(INTERNAL_IDENTITY_TOKEN_VERIFIER)
       .useValue(createStaticInternalIdentityTokenVerifier(internalIdentity));
   }
+  builder.overrideProvider(DATA_ADAPTER_REGISTRATIONS)
+    .useValue(options.dataAdapterRegistrations ?? testMockRegistrations);
   const moduleRef = await builder.compile();
 
   const { AssistantMessageService } = await import('../../src/assistant/message/assistant-message.service');
