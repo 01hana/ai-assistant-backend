@@ -2583,13 +2583,20 @@ function createToolDefinitions(baseDate: Date): ToolDefinitionRecord[] {
       outputRequired: ['orderId', 'status'],
       outputProperties: {
         orderId: { type: 'string' },
-        status: { type: 'string' },
+        customerCode: { type: 'string' },
+        status: {
+          type: ['string', 'array'],
+          items: { type: 'string' },
+          minItems: 1,
+          maxItems: 100
+        },
         requestedShipDate: { type: 'string' },
         committedShipDate: { type: 'string' },
         lineCount: { type: 'number' },
         holdReason: { type: 'string' }
       },
       outputAllowed: ['orderId', 'status', 'requestedShipDate', 'committedShipDate', 'lineCount', 'holdReason'],
+      outputDenied: ['customerCode'],
       evidenceProvenance: ['orderId'],
       baseDate
     }),
@@ -2728,6 +2735,7 @@ function createToolDefinition(input: {
   outputRequired: string[];
   outputProperties: Record<string, Record<string, unknown>>;
   outputAllowed: string[];
+  outputDenied?: string[];
   evidenceProvenance: string[];
   riskLevel?: RiskLevel;
   hasSideEffect?: boolean;
@@ -2759,7 +2767,7 @@ function createToolDefinition(input: {
       'x-assistant-result-policy': {
         version: '1',
         allowedFieldPaths: input.outputAllowed,
-        deniedFieldPaths: ['organizationId'],
+        deniedFieldPaths: [...new Set(['organizationId', ...(input.outputDenied ?? [])])],
         permissionMasks: [],
         limits: {
           maxDepth: 4,

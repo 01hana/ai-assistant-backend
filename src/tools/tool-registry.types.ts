@@ -115,3 +115,24 @@ export type ToolResultPolicyResolution =
       readonly allowed: false;
       readonly reason: 'missing_result_policy' | 'invalid_result_policy' | 'unsupported_result_policy_version';
     };
+
+export type SafeProjectedScalar = string | number | boolean | null;
+
+export interface SafeProjectedAdapterResult {
+  readonly kind: 'safe_projected_adapter_result';
+  readonly canonicalToolKey: string;
+  readonly schemaVersion: string;
+  readonly facts: Readonly<Record<string, unknown>>;
+  readonly fieldPaths: readonly string[];
+  readonly evidenceProvenance: Readonly<Record<string, SafeProjectedScalar>>;
+}
+
+export type AdapterResultProjectionResult =
+  | {
+      readonly projected: true;
+      readonly result: SafeProjectedAdapterResult;
+    }
+  | {
+      readonly projected: false;
+      readonly errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED';
+    };

@@ -1,12 +1,20 @@
 import { INestApplication } from '@nestjs/common';
 import request = require('supertest');
-import { createIdentityHeaders, createUs1TestApp, parseSseResponse } from '../support/us1-test-app.helper';
+import { MockConnectorAdapter } from '../../src/connectors/mock/mock-connector.adapter';
+import * as groundedAnswer from '../../src/assistant/runtime/grounded-answer-input.types';
+import {
+  createIdentityHeaders,
+  createUs1TestAppWithState,
+  parseSseResponse,
+  Us1TestState
+} from '../support/us1-test-app.helper';
 
 describe('authorized evidence-grounded answer integration', () => {
   let app: INestApplication;
+  let state: Us1TestState;
 
   beforeAll(async () => {
-    app = await createUs1TestApp();
+    ({ app, state } = await createUs1TestAppWithState());
   });
 
   afterAll(async () => {
@@ -47,5 +55,45 @@ describe('authorized evidence-grounded answer integration', () => {
         })
       })
     );
+  });
+
+  it('keeps declared-but-denied customerCode out of projected evidence, grounded input, SSE, and public output', async () => {
+    const customerCode = 'CUSTOMER_SECRET_SENTINEL';
+    const adapter = app.get(MockConnectorAdapter);
+    const originalExecute = adapter.execute.bind(adapter);
+    const execute = jest.spyOn(adapter, 'execute').mockImplementation(async (input) => {
+      const result = await originalExecute(input);
+      return result.data
+        ? { ...result, data: { ...result.data, customerCode } }
+        : result;
+    });
+    const groundedInput = jest.spyOn(groundedAnswer, 'createGroundedAnswerInput');
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/assistant/sessions/session-owned-001/messages')
+      .set(createIdentityHeaders({ 'x-request-id': 'req-customer-code-denied' }))
+      .send({
+        message: '請幫我查 SO-10001 訂單目前狀態',
+        pageContext: {
+          module: 'orders',
+          entityType: 'order',
+          entityId: 'SO-10001',
+          visibleColumns: ['status', 'customerCode']
+        }
+      });
+
+    expect(response.status).toBe(200);
+    expect(groundedInput).toHaveBeenCalled();
+    expect(JSON.stringify({
+      evidenceRefs: state.evidenceRefs,
+      groundedInputs: groundedInput.mock.calls,
+      groundedResults: groundedInput.mock.results,
+      response: response.text
+    })).not.toContain(customerCode);
+    expect(JSON.stringify(state.evidenceRefs)).not.toContain('customerCode');
+    expect(response.text).not.toContain('customerCode');
+
+    groundedInput.mockRestore();
+    execute.mockRestore();
   });
 });

@@ -1,4 +1,4 @@
-import { filterRow, maskFields, minimizeForLlmInput } from '../../src/permissions/masking.util';
+import { applyFieldPathMasks, filterRow, maskFields, minimizeForLlmInput } from '../../src/permissions/masking.util';
 
 describe('permission masking utilities', () => {
   const record = {
@@ -39,5 +39,20 @@ describe('permission masking utilities', () => {
       allowed: true,
       row: record
     });
+  });
+
+  it('applies immutable nested omit and redact masks without touching the source', () => {
+    const nested = {
+      status: 'picking',
+      details: { publicLabel: 'ready', internalCost: 9000 }
+    };
+
+    expect(
+      applyFieldPathMasks(nested, [
+        { fieldPath: 'details.publicLabel', action: 'omit' },
+        { fieldPath: 'details.internalCost', action: 'redact' }
+      ])
+    ).toEqual({ status: 'picking', details: { internalCost: '[MASKED]' } });
+    expect(nested).toEqual({ status: 'picking', details: { publicLabel: 'ready', internalCost: 9000 } });
   });
 });

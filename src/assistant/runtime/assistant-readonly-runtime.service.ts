@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { RiskLevel, ToolOperation } from '../../generated/prisma/enums';
+import { ConnectorExecuteResult } from '../../connectors/connector-adapter.interface';
 import { MockConnectorAdapter } from '../../connectors/mock/mock-connector.adapter';
-import { LlmInputSanitizerService } from '../../permissions/llm-input-sanitizer.service';
+import { AdapterResultProjectorService } from '../../connectors/adapter-result-projector.service';
 import { ToolPermissionPrecheckService } from '../../permissions/tool-permission-precheck.service';
 import { ToolRegistryService } from '../../tools/tool-registry.service';
-import { getPageEntityRef, getVisibleColumns } from '../page-context/page-context.mapper';
+import { RegisteredToolDefinition } from '../../tools/tool-registry.types';
+import { getPageEntityRef, getPresentationFieldPaths, getVisibleColumns } from '../page-context/page-context.mapper';
+import { PageEntityRef } from '../page-context/page-context.types';
 import { AssistantReadonlyRuntimeInput, AssistantReadonlyRuntimeResult } from './runtime.types';
 import { ToolCallService } from './tool-call.service';
 
@@ -16,7 +19,7 @@ export class AssistantReadonlyRuntimeService {
     private readonly mockConnector: MockConnectorAdapter,
     private readonly permissionPrecheck: ToolPermissionPrecheckService,
     private readonly toolCallService: ToolCallService,
-    private readonly llmInputSanitizer: LlmInputSanitizerService
+    private readonly resultProjector: AdapterResultProjectorService
   ) {}
 
   async execute(input: AssistantReadonlyRuntimeInput): Promise<AssistantReadonlyRuntimeResult> {
@@ -61,7 +64,6 @@ export class AssistantReadonlyRuntimeService {
         riskLevel: RiskLevel.high,
         entityRef,
         visibleFields,
-        sanitizedResult: {},
         deniedReason: toolResolution.deniedReason ?? 'tool_not_registered'
       };
     }
@@ -100,7 +102,6 @@ export class AssistantReadonlyRuntimeService {
         riskLevel: tool.riskLevel,
         entityRef,
         visibleFields,
-        sanitizedResult: {},
         deniedReason: permission.reason
       };
     }
@@ -136,7 +137,6 @@ export class AssistantReadonlyRuntimeService {
         riskLevel: tool.riskLevel,
         entityRef,
         visibleFields,
-        sanitizedResult: {},
         deniedReason: 'operation_denied'
       };
     }
@@ -175,7 +175,6 @@ export class AssistantReadonlyRuntimeService {
         riskLevel: tool.riskLevel,
         entityRef,
         visibleFields,
-        sanitizedResult: {},
         deniedReason: validation.deniedReason
       };
     }
@@ -194,17 +193,78 @@ export class AssistantReadonlyRuntimeService {
       visibleFields,
       safeInputSummary: validation.safeInputSummary
     });
-    const connectorResult = await this.mockConnector.execute({
-      requestId: input.requestId,
-      organizationId: input.identityContext.organization.organizationId,
-      actorId: input.identityContext.actor.actorId,
-      toolKey: tool.key,
-      arguments: validation.operation.arguments
-    });
+    let connectorResult: ConnectorExecuteResult;
+    try {
+      connectorResult = await this.mockConnector.execute({
+        requestId: input.requestId,
+        organizationId: input.identityContext.organization.organizationId,
+        actorId: input.identityContext.actor.actorId,
+        toolKey: tool.key,
+        arguments: validation.operation.arguments
+      });
+    } catch {
+      return this.failStartedToolCall({
+        input,
+        tool,
+        toolCallId: startedToolCall.id,
+        entityRef,
+        visibleFields,
+        connectorStatus: 'failed',
+        errorCode: 'TOOL_EXECUTION_FAILED',
+        durationMs: Math.max(1, Date.now() - startedAt)
+      });
+    }
     const durationMs = Math.max(1, Date.now() - startedAt);
 
     if (connectorResult.status !== 'succeeded' || !connectorResult.data) {
-      const { toolCall } = await this.toolCallService.failToolCall({
+      return this.failStartedToolCall({
+        input,
+        tool,
+        toolCallId: startedToolCall.id,
+        entityRef,
+        visibleFields,
+        connectorStatus: connectorResult.status,
+        errorCode: toSafeConnectorErrorCode(connectorResult),
+        durationMs
+      });
+    }
+
+    let projection;
+    try {
+      projection = this.resultProjector.project({
+        tool,
+        resultPolicy: this.toolRegistry.resolveResultPolicy(tool),
+        rawResult: connectorResult.data,
+        permissionScopes: input.hostIntegrationContext.permissionScopes,
+        presentationFieldPaths: getPresentationFieldPaths(input.pageContext)
+      });
+    } catch {
+      return this.failStartedToolCall({
+        input,
+        tool,
+        toolCallId: startedToolCall.id,
+        entityRef,
+        visibleFields,
+        connectorStatus: connectorResult.status,
+        errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED',
+        durationMs
+      });
+    }
+    if (!projection.projected) {
+      return this.failStartedToolCall({
+        input,
+        tool,
+        toolCallId: startedToolCall.id,
+        entityRef,
+        visibleFields,
+        connectorStatus: connectorResult.status,
+        errorCode: projection.errorCode,
+        durationMs
+      });
+    }
+    let completedToolCall;
+    try {
+      ({ toolCall: completedToolCall } = await this.toolCallService.completeToolCall({
         customerScope: input.customerScope,
         requestId: input.requestId,
         sessionId: input.sessionId,
@@ -214,56 +274,72 @@ export class AssistantReadonlyRuntimeService {
         toolName: tool.key,
         toolVersion: tool.version,
         riskLevel: tool.riskLevel,
-        errorCode: connectorResult.error?.code ?? connectorResult.status,
+        visibleFields,
+        projectedResult: projection.result,
         durationMs
-      });
-
-      return {
-        toolName: tool.key,
-        toolVersion: tool.version,
-        toolCallId: toolCall.id,
-        toolLifecycle: 'failed',
-        riskLevel: tool.riskLevel,
+      }));
+    } catch {
+      return this.failStartedToolCall({
+        input,
+        tool,
+        toolCallId: startedToolCall.id,
         entityRef,
         visibleFields,
-        sanitizedResult: {},
         connectorStatus: connectorResult.status,
-        connectorErrorCode: connectorResult.error?.code,
+        errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED',
         durationMs
-      };
+      });
     }
-
-    const sanitization = this.llmInputSanitizer.sanitize({
-      record: connectorResult.data,
-      visibleFields
-    });
-    const sanitizedResult = sanitization.sanitized;
-    const { toolCall } = await this.toolCallService.completeToolCall({
-      customerScope: input.customerScope,
-      requestId: input.requestId,
-      sessionId: input.sessionId,
-      messageId: input.responseMessageId,
-      identityContext: input.identityContext,
-      toolCallId: startedToolCall.id,
-      toolName: tool.key,
-      toolVersion: tool.version,
-      riskLevel: tool.riskLevel,
-      visibleFields,
-      sanitizedResult,
-      durationMs
-    });
 
     return {
       toolName: tool.key,
       toolVersion: tool.version,
-      toolCallId: toolCall.id,
+      toolCallId: completedToolCall.id,
       toolLifecycle: 'completed',
       riskLevel: tool.riskLevel,
       entityRef,
       visibleFields,
-      sanitizedResult,
+      projectedResult: projection.result,
       connectorStatus: connectorResult.status,
       durationMs
+    };
+  }
+
+  private async failStartedToolCall(input: {
+    readonly input: AssistantReadonlyRuntimeInput;
+    readonly tool: RegisteredToolDefinition;
+    readonly toolCallId: string;
+    readonly entityRef: PageEntityRef;
+    readonly visibleFields: string[];
+    readonly connectorStatus: ConnectorExecuteResult['status'];
+    readonly errorCode: string;
+    readonly durationMs: number;
+  }): Promise<AssistantReadonlyRuntimeResult> {
+    const { toolCall } = await this.toolCallService.failToolCall({
+      customerScope: input.input.customerScope,
+      requestId: input.input.requestId,
+      sessionId: input.input.sessionId,
+      messageId: input.input.responseMessageId,
+      identityContext: input.input.identityContext,
+      toolCallId: input.toolCallId,
+      toolName: input.tool.key,
+      toolVersion: input.tool.version,
+      riskLevel: input.tool.riskLevel,
+      errorCode: input.errorCode,
+      durationMs: input.durationMs
+    });
+
+    return {
+      toolName: input.tool.key,
+      toolVersion: input.tool.version,
+      toolCallId: toolCall.id,
+      toolLifecycle: 'failed',
+      riskLevel: input.tool.riskLevel,
+      entityRef: input.entityRef,
+      visibleFields: input.visibleFields,
+      connectorStatus: input.connectorStatus,
+      connectorErrorCode: input.errorCode,
+      durationMs: input.durationMs
     };
   }
 
@@ -279,6 +355,12 @@ export class AssistantReadonlyRuntimeService {
       });
     }
   }
+}
+
+function toSafeConnectorErrorCode(result: ConnectorExecuteResult): string {
+  if (result.error?.code === 'NOT_FOUND') return 'NOT_FOUND';
+  if (result.status === 'permission_denied' || result.status === 'requires_approval') return result.status;
+  return 'TOOL_EXECUTION_FAILED';
 }
 
 function firstPlannedCandidate(candidateTools: Prisma.JsonValue): Record<string, unknown> & { key: string } {

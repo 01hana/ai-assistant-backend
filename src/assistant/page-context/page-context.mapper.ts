@@ -41,6 +41,11 @@ export function getVisibleColumns(pageContext?: NormalizedPageContext): string[]
   return visibleColumns.length > 0 ? visibleColumns : ['status'];
 }
 
+export function getPresentationFieldPaths(pageContext?: NormalizedPageContext): readonly string[] | undefined {
+  const fields = pageContext?.visibleColumns?.filter((column) => column.trim().length > 0);
+  return fields && fields.length > 0 ? Object.freeze([...fields]) : undefined;
+}
+
 export function toPageContextAuditMetadata(pageContext?: NormalizedPageContext): PageContextAuditMetadata | undefined {
   if (!pageContext) {
     return undefined;

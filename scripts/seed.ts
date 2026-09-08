@@ -238,6 +238,7 @@ const createMockOutputSchema = (input: {
   properties: Record<string, Record<string, unknown>>;
   allowedFieldPaths: string[];
   evidenceSafeProvenanceFields: string[];
+  deniedFieldPaths?: string[];
 }) => ({
   type: 'object',
   required: input.required,
@@ -248,7 +249,7 @@ const createMockOutputSchema = (input: {
   'x-assistant-result-policy': {
     version: '1',
     allowedFieldPaths: input.allowedFieldPaths,
-    deniedFieldPaths: ['organizationId'],
+    deniedFieldPaths: [...new Set(['organizationId', ...(input.deniedFieldPaths ?? [])])],
     permissionMasks: [],
     limits: {
       maxDepth: 4,
@@ -272,13 +273,20 @@ const MOCK_TOOL_DEFINITIONS = [
       required: ['orderId', 'status'],
       properties: {
         orderId: { type: 'string' },
-        status: { type: 'string' },
+        customerCode: { type: 'string' },
+        status: {
+          type: ['string', 'array'],
+          items: { type: 'string' },
+          minItems: 1,
+          maxItems: 100
+        },
         requestedShipDate: { type: 'string' },
         committedShipDate: { type: 'string' },
         lineCount: { type: 'number' },
         holdReason: { type: 'string' }
       },
       allowedFieldPaths: ['orderId', 'status', 'requestedShipDate', 'committedShipDate', 'lineCount', 'holdReason'],
+      deniedFieldPaths: ['customerCode'],
       evidenceSafeProvenanceFields: ['orderId']
     }),
     requiredPermissions: ['orders:read'],

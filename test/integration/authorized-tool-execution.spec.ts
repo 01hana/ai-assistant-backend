@@ -59,13 +59,33 @@ describe('US2 authorized mock connector tool execution', () => {
     const finalEvent = events.find((event) => event.event === 'final');
     const completedToolEvent = events.find((event) => event.event === 'tool_call_completed');
     const latestToolCall = state.toolCalls[state.toolCalls.length - 1];
+    const latestEvidenceRef = state.evidenceRefs[state.evidenceRefs.length - 1];
 
     expect(completedToolEvent?.data?.data?.status).toBe('completed');
     expect(latestToolCall?.toolName).toBe('mock.inventory.availability.lookup');
-    expect(latestToolCall?.outputSummary).toEqual(
+    expect(latestToolCall?.outputSummary).toEqual({
+      canonicalToolKey: 'mock.inventory.availability.lookup',
+      schemaVersion: '1.0.0',
+      fieldPaths: ['availableQuantity', 'incomingQuantity'],
+      fieldCount: 2,
+      evidenceProvenanceFields: ['itemSku']
+    });
+    const serializedOutputSummary = JSON.stringify(latestToolCall?.outputSummary);
+    expect(serializedOutputSummary).not.toContain('36');
+    expect(serializedOutputSummary).not.toContain('120');
+    expect(serializedOutputSummary).not.toContain('SKU-DEMO-RED');
+    expect(serializedOutputSummary).not.toContain('WH-DEMO-TPE');
+    expect(latestEvidenceRef).toEqual(
       expect.objectContaining({
-        availableQuantity: 36,
-        incomingQuantity: 120
+        sourceId: 'SKU-DEMO-RED',
+        entityId: 'SKU-DEMO-RED',
+        fieldPaths: ['availableQuantity', 'incomingQuantity'],
+        summary: {
+          fields: {
+            availableQuantity: 36,
+            incomingQuantity: 120
+          }
+        }
       })
     );
     expect(finalEvent?.data).toEqual(

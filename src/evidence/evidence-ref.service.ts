@@ -4,20 +4,16 @@ import { Prisma } from '../generated/prisma/client';
 import { EvidenceSourceType, KnowledgeDocumentStatus } from '../generated/prisma/enums';
 import { CustomerScope } from '../identity/customer-scope.types';
 import { RequestIdentityContext } from '../identity/identity-context.types';
-import { minimizeForLlmInput } from '../permissions/masking.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { SafeProjectedAdapterResult, SafeProjectedScalar } from '../tools/tool-registry.types';
 
-export interface StructuredEvidenceInput<TRecord extends Record<string, unknown>> {
+export interface StructuredEvidenceInput {
   requestId: string;
   sessionId: string;
   messageId: string;
   toolCallId: string;
-  identityContext: RequestIdentityContext;
   customerScope: CustomerScope;
-  entityType: string;
-  entityId: string;
-  record: TRecord;
-  visibleFields: string[];
+  projectedResult: SafeProjectedAdapterResult;
 }
 
 export interface DocumentChunkEvidenceInput {
@@ -49,27 +45,29 @@ export class EvidenceRefService {
     private readonly auditWriter: AuditWriterService
   ) {}
 
-  async attachStructuredRecordEvidence<TRecord extends Record<string, unknown>>(
-    input: StructuredEvidenceInput<TRecord>
-  ): Promise<AttachedEvidence<Partial<TRecord>>> {
+  async attachStructuredRecordEvidence(
+    input: StructuredEvidenceInput
+  ): Promise<AttachedEvidence | undefined> {
+    const provenance = firstUsableProvenance(input.projectedResult.evidenceProvenance);
+    if (Object.keys(input.projectedResult.facts).length === 0 || !provenance) return undefined;
     await this.assertStructuredParents(input.customerScope, input);
-    const sanitizedSummary = minimizeForLlmInput(input.record, input.visibleFields);
+    const summary = input.projectedResult.facts;
     const evidenceRef = await this.prisma.db.evidenceRef.create({
       data: {
         customerId: input.customerScope.customerId,
         requestId: input.requestId,
         messageId: input.messageId,
         sourceType: EvidenceSourceType.structured_record,
-        sourceId: input.entityId,
+        sourceId: provenance.value,
         toolCallId: input.toolCallId,
-        entityType: input.entityType,
-        entityId: input.entityId,
-        fieldPaths: input.visibleFields,
+        entityType: input.projectedResult.canonicalToolKey,
+        entityId: provenance.value,
+        fieldPaths: [...input.projectedResult.fieldPaths],
         permissionSnapshot: toJsonInput({
-          visibleFields: input.visibleFields
+          provenanceFields: Object.keys(input.projectedResult.evidenceProvenance).sort()
         }),
         summary: toJsonInput({
-          fields: sanitizedSummary
+          fields: summary
         })
       }
     });
@@ -87,7 +85,8 @@ export class EvidenceRefService {
         sourceType: evidenceRef.sourceType,
         entityType: evidenceRef.entityType,
         entityId: evidenceRef.entityId,
-        fieldCount: input.visibleFields.length
+        fieldCount: input.projectedResult.fieldPaths.length,
+        provenanceFieldCount: Object.keys(input.projectedResult.evidenceProvenance).length
       })
     });
 
@@ -98,7 +97,7 @@ export class EvidenceRefService {
       entityType: evidenceRef.entityType ?? undefined,
       entityId: evidenceRef.entityId ?? undefined,
       fieldPaths: evidenceRef.fieldPaths,
-      summary: sanitizedSummary
+      summary
     };
   }
 
@@ -160,9 +159,9 @@ export class EvidenceRefService {
     };
   }
 
-  private async assertStructuredParents<TRecord extends Record<string, unknown>>(
+  private async assertStructuredParents(
     customerScope: CustomerScope,
-    input: StructuredEvidenceInput<TRecord>
+    input: StructuredEvidenceInput
   ): Promise<void> {
     const [message, toolCall] = await Promise.all([
       this.prisma.db.assistantMessage.findFirst({
@@ -218,6 +217,14 @@ export class EvidenceRefService {
   private createNotFoundError(): NotFoundException {
     return new NotFoundException({ error: 'NOT_FOUND', message: 'Evidence resource not found.' });
   }
+}
+
+function firstUsableProvenance(provenance: Readonly<Record<string, SafeProjectedScalar>>): { fieldPath: string; value: string } | undefined {
+  for (const [fieldPath, value] of Object.entries(provenance)) {
+    const normalized = value === null ? '' : String(value).trim();
+    if (normalized.length > 0) return { fieldPath, value: normalized };
+  }
+  return undefined;
 }
 
 function toJsonInput<T>(value: T): Prisma.InputJsonValue {

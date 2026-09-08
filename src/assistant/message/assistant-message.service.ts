@@ -18,6 +18,7 @@ import { toPageContextAuditMetadata, toPageContextPersistence } from '../page-co
 import { AssistantPlanningService } from '../planning/assistant-planning.service';
 import { AssistantPlanningResult } from '../planning/assistant-planning.types';
 import { AssistantReadonlyRuntimeService } from '../runtime/assistant-readonly-runtime.service';
+import { createGroundedAnswerInput } from '../runtime/grounded-answer-input.types';
 import { AssistantSessionService } from '../session/assistant-session.service';
 import { AssistantSseEventBuilder } from '../sse/assistant-sse-event.builder';
 import { AssistantSseEventRecord } from '../sse/assistant-sse.types';
@@ -668,18 +669,14 @@ export class AssistantMessageService {
       });
     }
 
-    const evidenceRef = Object.keys(runtimeResult.sanitizedResult).length > 0 && runtimeResult.toolCallId
+    const evidenceRef = runtimeResult.projectedResult && runtimeResult.toolCallId
       ? await this.evidenceRefService.attachStructuredRecordEvidence({
           requestId: input.requestId,
           sessionId: session.id,
           messageId: assistantMessage.id,
           toolCallId: runtimeResult.toolCallId,
-          identityContext: input.identityContext,
           customerScope,
-          entityType: runtimeResult.entityRef.entityType ?? 'order',
-          entityId: runtimeResult.entityRef.entityId ?? runtimeResult.toolName,
-          record: runtimeResult.sanitizedResult,
-          visibleFields: Object.keys(runtimeResult.sanitizedResult)
+          projectedResult: runtimeResult.projectedResult
         })
       : undefined;
 
@@ -872,19 +869,22 @@ export class AssistantMessageService {
       });
     }
 
+    const groundedAnswerInput = runtimeResult.projectedResult && runtimeResult.toolCallId
+      ? createGroundedAnswerInput({
+          toolCallId: runtimeResult.toolCallId,
+          projectedResult: runtimeResult.projectedResult,
+          evidenceRefs: evidenceRef ? [evidenceRef] : []
+        })
+      : undefined;
     const answerDecision = await this.answerDecisionService.decide({
       customerScope,
       requestId: input.requestId,
       messageId: assistantMessage.id,
       executionPlan: planningResult.executionPlan,
-      evidenceRefs: evidenceRef
-        ? [
-            {
-              id: evidenceRef.id,
-              summary: evidenceRef.summary
-            }
-          ]
-        : []
+      evidenceRefs: groundedAnswerInput?.evidence.map((evidence) => ({
+        id: evidence.evidenceRefId,
+        summary: evidence.projectedFacts as Record<string, unknown>
+      })) ?? []
     });
 
     await this.messageRepository.completeAssistantMessage({

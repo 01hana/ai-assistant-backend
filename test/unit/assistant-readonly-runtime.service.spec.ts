@@ -4,10 +4,14 @@ import { AssistantReadonlyRuntimeInput } from '../../src/assistant/runtime/runti
 import { ToolCallService } from '../../src/assistant/runtime/tool-call.service';
 import { createCustomerScopeFromIdentityContext } from '../../src/identity/customer-scope.factory';
 import { PrismaService } from '../../src/prisma/prisma.service';
-import { RegisteredToolDefinition, ToolPermissionDeniedReason } from '../../src/tools/tool-registry.types';
+import {
+  RegisteredToolDefinition,
+  SafeProjectedAdapterResult,
+  ToolPermissionDeniedReason
+} from '../../src/tools/tool-registry.types';
 
 describe('AssistantReadonlyRuntimeService', () => {
-  it('starts and completes a tool call, then returns only sanitized connector data', async () => {
+  it('starts before connector execution and completes only from projected connector data', async () => {
     const connectorExecute = jest.fn().mockResolvedValue({
       status: 'succeeded',
       data: {
@@ -18,10 +22,12 @@ describe('AssistantReadonlyRuntimeService', () => {
     });
     const startToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-001' } });
     const completeToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-001' } });
+    const projectedResult = safeProjectedResult({ status: 'picking' });
     const service = createRuntimeService({
       connectorExecute,
       startToolCall,
-      completeToolCall
+      completeToolCall,
+      projectorProject: jest.fn().mockReturnValue({ projected: true, result: projectedResult })
     });
 
     const input = runtimeInput();
@@ -54,15 +60,17 @@ describe('AssistantReadonlyRuntimeService', () => {
     );
     expect(JSON.stringify(startToolCall.mock.calls)).not.toContain('SO-10002');
     expect(JSON.stringify(startToolCall.mock.calls)).not.toContain('mock.orders.cancel');
+    expect(startToolCall.mock.invocationCallOrder[0]).toBeLessThan(connectorExecute.mock.invocationCallOrder[0]);
     expect(completeToolCall).toHaveBeenCalledWith(
       expect.objectContaining({
         toolCallId: 'tool-call-001',
-        sanitizedResult: { status: 'picking' }
+        projectedResult
       })
     );
+    expect(JSON.stringify(completeToolCall.mock.calls)).not.toContain('128000');
     expect(result.toolCallId).toBe('tool-call-001');
     expect(result.toolLifecycle).toBe('completed');
-    expect(result.sanitizedResult).toEqual({ status: 'picking' });
+    expect(result.projectedResult).toBe(projectedResult);
     expect(JSON.stringify(result)).not.toContain('128000');
   });
 
@@ -189,7 +197,106 @@ describe('AssistantReadonlyRuntimeService', () => {
     expect(result.toolCallId).toBe('tool-call-failed-001');
     expect(result.toolLifecycle).toBe('failed');
     expect(result.connectorStatus).toBe('failed');
-    expect(result.sanitizedResult).toEqual({});
+    expect(result.projectedResult).toBeUndefined();
+  });
+
+  it('replaces an unknown connector error code with the bounded execution failure code', async () => {
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-failed-bounded' } });
+    const service = createRuntimeService({
+      connectorExecute: jest.fn().mockResolvedValue({
+        status: 'failed',
+        error: { code: 'RAW_CUSTOMER_SECRET_008', message: 'RAW_ADAPTER_RESULT_SENTINEL_008' }
+      }),
+      failToolCall
+    });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(failToolCall).toHaveBeenCalledWith(expect.objectContaining({ errorCode: 'TOOL_EXECUTION_FAILED' }));
+    expect(JSON.stringify({ calls: failToolCall.mock.calls, result })).not.toContain('RAW_CUSTOMER_SECRET_008');
+    expect(JSON.stringify({ calls: failToolCall.mock.calls, result })).not.toContain('RAW_ADAPTER_RESULT_SENTINEL_008');
+    expect(result.connectorErrorCode).toBe('TOOL_EXECUTION_FAILED');
+  });
+
+  it('fails the started ToolCall with a bounded code when connector execution throws', async () => {
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-failed-throw' } });
+    const service = createRuntimeService({
+      connectorExecute: jest.fn().mockRejectedValue(new Error('RAW_ADAPTER_RESULT_SENTINEL_008')),
+      failToolCall
+    });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(failToolCall).toHaveBeenCalledWith(expect.objectContaining({ errorCode: 'TOOL_EXECUTION_FAILED' }));
+    expect(JSON.stringify(failToolCall.mock.calls)).not.toContain('RAW_ADAPTER_RESULT_SENTINEL_008');
+    expect(result).toEqual(expect.objectContaining({
+      toolCallId: 'tool-call-failed-throw',
+      toolLifecycle: 'failed',
+      connectorErrorCode: 'TOOL_EXECUTION_FAILED'
+    }));
+    expect(result.projectedResult).toBeUndefined();
+  });
+
+  it('fails the started ToolCall when projection returns a bounded failure', async () => {
+    const completeToolCall = jest.fn();
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-failed-projection' } });
+    const service = createRuntimeService({
+      projectorProject: jest.fn().mockReturnValue({
+        projected: false,
+        errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED'
+      }),
+      completeToolCall,
+      failToolCall
+    });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(completeToolCall).not.toHaveBeenCalled();
+    expect(failToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED' })
+    );
+    expect(result.toolLifecycle).toBe('failed');
+    expect(result.projectedResult).toBeUndefined();
+  });
+
+  it('fails the started ToolCall without exposing a thrown projection error', async () => {
+    const completeToolCall = jest.fn();
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-failed-projection-throw' } });
+    const service = createRuntimeService({
+      projectorProject: jest.fn(() => {
+        throw new Error('RAW_ADAPTER_RESULT_SENTINEL_008');
+      }),
+      completeToolCall,
+      failToolCall
+    });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(completeToolCall).not.toHaveBeenCalled();
+    expect(failToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED' })
+    );
+    expect(JSON.stringify({ calls: failToolCall.mock.calls, result })).not.toContain('RAW_ADAPTER_RESULT_SENTINEL_008');
+    expect(result.projectedResult).toBeUndefined();
+  });
+
+  it('fails the started ToolCall when safe output summary completion fails', async () => {
+    const failToolCall = jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-failed-summary' } });
+    const completeToolCall = jest.fn().mockRejectedValue(new Error('RAW_CUSTOMER_SECRET_008'));
+    const service = createRuntimeService({ completeToolCall, failToolCall });
+
+    const result = await service.execute(runtimeInput());
+
+    expect(failToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: 'ADAPTER_RESULT_PROJECTION_FAILED' })
+    );
+    expect(JSON.stringify(failToolCall.mock.calls)).not.toContain('RAW_CUSTOMER_SECRET_008');
+    expect(result).toEqual(expect.objectContaining({
+      toolCallId: 'tool-call-failed-summary',
+      toolLifecycle: 'failed',
+      connectorErrorCode: 'ADAPTER_RESULT_PROJECTION_FAILED'
+    }));
+    expect(result.projectedResult).toBeUndefined();
   });
 
   it.each([
@@ -279,7 +386,7 @@ describe('ToolCallService', () => {
       toolVersion: '1.0.0',
       riskLevel: RiskLevel.low,
       visibleFields: ['status'],
-      sanitizedResult: { status: '已確認' },
+      projectedResult: safeProjectedResult({ status: '已確認' }),
       durationMs: 3
     });
 
@@ -331,7 +438,13 @@ describe('ToolCallService', () => {
         data: expect.objectContaining({
           status: ToolCallStatus.success,
           executionStatus: ToolExecutionStatus.executed,
-          outputSummary: { status: '已確認' }
+          outputSummary: {
+            canonicalToolKey: 'mock.orders.status.lookup',
+            schemaVersion: '1.0.0',
+            fieldPaths: ['status'],
+            fieldCount: 1,
+            evidenceProvenanceFields: ['orderId']
+          }
         })
       })
     );
@@ -402,10 +515,22 @@ function createRuntimeService(overrides?: {
   completeToolCall?: jest.Mock;
   failToolCall?: jest.Mock;
   blockToolCall?: jest.Mock;
+  projectorProject?: jest.Mock;
 }) {
   return new AssistantReadonlyRuntimeService(
     {
       resolveToolForCustomer: jest.fn().mockResolvedValue(overrides?.registryResult ?? { resolved: { tool: registeredTool(), requiredRoles: [], requiredPermissionScopes: [] } }),
+      resolveResultPolicy: jest.fn().mockReturnValue({
+        allowed: true,
+        policy: {
+          version: '1',
+          allowedFieldPaths: ['orderId', 'status'],
+          deniedFieldPaths: ['organizationId'],
+          permissionMasks: [],
+          limits: { maxDepth: 4, maxItems: 100, maxStringLength: 512, maxTotalBytes: 16384 },
+          evidenceSafeProvenanceFields: ['orderId']
+        }
+      }),
       isExecutableReadOnly: jest.fn().mockReturnValue(true),
       validateInput: jest.fn().mockReturnValue(overrides?.validation ?? { valid: true }),
       validateNamedOperation: jest.fn((tool, candidate) => {
@@ -452,11 +577,9 @@ function createRuntimeService(overrides?: {
       blockToolCall: overrides?.blockToolCall ?? jest.fn().mockResolvedValue({ toolCall: { id: 'tool-call-blocked-001' } })
     } as never,
     {
-      sanitize: jest.fn(({ record, visibleFields }) => ({
-        sanitized: Object.fromEntries(Object.entries(record).filter(([field]) => visibleFields.includes(field))),
-        visibleFields,
-        removedFieldCount: Object.keys(record).filter((field) => !visibleFields.includes(field)).length
-      }))
+      project:
+        overrides?.projectorProject ??
+        jest.fn().mockReturnValue({ projected: true, result: safeProjectedResult({ status: 'picking' }) })
     } as never
   );
 }
@@ -572,11 +695,22 @@ function createMismatchRuntimeHarness() {
       connector as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[1],
       permissionPrecheck as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[2],
       toolCallService as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[3],
-      { sanitize: jest.fn() } as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[4]
+      { project: jest.fn() } as unknown as ConstructorParameters<typeof AssistantReadonlyRuntimeService>[4]
     ),
     toolRegistry,
     connector,
     permissionPrecheck,
     toolCallService
   };
+}
+
+function safeProjectedResult(facts: Readonly<Record<string, unknown>>): SafeProjectedAdapterResult {
+  return Object.freeze({
+    kind: 'safe_projected_adapter_result',
+    canonicalToolKey: 'mock.orders.status.lookup',
+    schemaVersion: '1.0.0',
+    facts: Object.freeze({ ...facts }),
+    fieldPaths: Object.freeze(Object.keys(facts).sort()),
+    evidenceProvenance: Object.freeze({ orderId: 'SO-10001' })
+  });
 }

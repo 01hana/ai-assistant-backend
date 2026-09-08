@@ -12,11 +12,15 @@ import {
   StartToolCallInput,
   VisibleToolCallInput
 } from './runtime.types';
-import { SafeToolInputSummary } from '../../tools/tool-registry.types';
+import { SafeProjectedAdapterResult, SafeToolInputSummary } from '../../tools/tool-registry.types';
 
-type StartToolCallWithSafeSummary = StartToolCallInput & {
-  safeInputSummary?: SafeToolInputSummary;
-};
+interface SafeToolOutputSummary {
+  readonly canonicalToolKey: string;
+  readonly schemaVersion: string;
+  readonly fieldPaths: readonly string[];
+  readonly fieldCount: number;
+  readonly evidenceProvenanceFields: readonly string[];
+}
 
 @Injectable()
 export class ToolCallService {
@@ -25,7 +29,7 @@ export class ToolCallService {
     private readonly auditWriter: AuditWriterService
   ) {}
 
-  async startToolCall(input: StartToolCallWithSafeSummary): Promise<{ toolCall: ToolCall }> {
+  async startToolCall(input: StartToolCallInput): Promise<{ toolCall: ToolCall }> {
     await this.assertCustomerParents(input);
     const toolCall = await this.prisma.db.toolCall.create({
       data: {
@@ -35,12 +39,7 @@ export class ToolCallService {
         messageId: input.messageId,
         toolName: input.toolName,
         toolVersion: input.toolVersion ?? 'unknown',
-        inputSummary: toJsonInput(
-          input.safeInputSummary ?? {
-            entityId: input.entityId,
-            visibleFieldCount: input.visibleFields.length
-          }
-        ),
+        inputSummary: toJsonInput(createSafeToolInputSummary(input.safeInputSummary)),
         permissionResult: toJsonInput({
           scopes: input.identityContext.actor.permissionScopes,
           visibleFields: input.visibleFields
@@ -69,8 +68,9 @@ export class ToolCallService {
   }
 
   async completeToolCall(input: CompleteToolCallInput): Promise<{ toolCall: ToolCall }> {
+    const safeOutputSummary = createSafeToolOutputSummary(input.projectedResult);
     const toolCall = await this.transition(input, {
-        outputSummary: toJsonInput(input.sanitizedResult),
+        outputSummary: toJsonInput(safeOutputSummary),
         status: ToolCallStatus.success,
         executionStatus: ToolExecutionStatus.executed,
         durationMs: input.durationMs ?? 1,
@@ -88,7 +88,7 @@ export class ToolCallService {
         operation: 'read',
         durationMs: input.durationMs ?? 1,
         visibleFieldCount: input.visibleFields.length,
-        outputFieldCount: Object.keys(input.sanitizedResult).length
+        outputFieldCount: safeOutputSummary.fieldCount
       }
     });
 
@@ -170,7 +170,7 @@ export class ToolCallService {
     const { toolCall } = await this.completeToolCall({
       ...input,
       toolCallId: startedToolCall.id,
-      sanitizedResult: input.sanitizedResult
+      projectedResult: input.projectedResult
     });
 
     return { toolCall };
@@ -236,4 +236,29 @@ export class ToolCallService {
 
 function toJsonInput<T>(value: T): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue;
+}
+
+function createSafeToolInputSummary(summary: SafeToolInputSummary): SafeToolInputSummary {
+  return Object.freeze({
+    canonicalToolKey: summary.canonicalToolKey,
+    schemaVersion: summary.schemaVersion,
+    argumentKeys: Object.freeze([...new Set(summary.argumentKeys)].sort()),
+    argumentCount: summary.argumentCount
+  });
+}
+
+function createSafeToolOutputSummary(projectedResult: SafeProjectedAdapterResult): SafeToolOutputSummary {
+  if (projectedResult.kind !== 'safe_projected_adapter_result') {
+    throw new Error('Invalid safe projected adapter result.');
+  }
+
+  const fieldPaths = Object.freeze([...new Set(projectedResult.fieldPaths)].sort());
+  const evidenceProvenanceFields = Object.freeze(Object.keys(projectedResult.evidenceProvenance).sort());
+  return Object.freeze({
+    canonicalToolKey: projectedResult.canonicalToolKey,
+    schemaVersion: projectedResult.schemaVersion,
+    fieldPaths,
+    fieldCount: fieldPaths.length,
+    evidenceProvenanceFields
+  });
 }

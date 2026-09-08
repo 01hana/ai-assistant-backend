@@ -6,7 +6,11 @@ import { CustomerScope } from '../../identity/customer-scope.types';
 import { ConnectorExecuteResult } from '../../connectors/connector-adapter.interface';
 import { NormalizedPageContext, PageEntityRef } from '../page-context/page-context.types';
 import { PersistedExecutionPlan } from '../planning/assistant-planning.types';
-import { ToolPermissionDeniedReason } from '../../tools/tool-registry.types';
+import {
+  SafeProjectedAdapterResult,
+  SafeToolInputSummary,
+  ToolPermissionDeniedReason
+} from '../../tools/tool-registry.types';
 
 export interface StructuredBusinessRecord {
   [key: string]: unknown;
@@ -33,7 +37,7 @@ export interface AssistantReadonlyRuntimeResult {
   riskLevel: RiskLevel;
   entityRef: PageEntityRef;
   visibleFields: string[];
-  sanitizedResult: Record<string, unknown>;
+  projectedResult?: SafeProjectedAdapterResult;
   deniedReason?: ToolPermissionDeniedReason;
   connectorStatus?: ConnectorExecuteResult['status'];
   connectorErrorCode?: string;
@@ -51,6 +55,7 @@ export interface StartToolCallInput {
   riskLevel?: RiskLevel;
   entityId?: string;
   visibleFields: string[];
+  safeInputSummary: SafeToolInputSummary;
 }
 
 export interface CompleteToolCallInput {
@@ -64,7 +69,7 @@ export interface CompleteToolCallInput {
   toolVersion?: string;
   riskLevel?: RiskLevel;
   visibleFields: string[];
-  sanitizedResult: Record<string, unknown>;
+  projectedResult: SafeProjectedAdapterResult;
   durationMs?: number;
 }
 
@@ -101,7 +106,7 @@ export interface CompletedToolCallResult {
 }
 
 export interface CreateToolCallInput extends StartToolCallInput {
-  sanitizedResult: Record<string, unknown>;
+  projectedResult: SafeProjectedAdapterResult;
   status?: ToolCallStatus;
   executionStatus?: ToolExecutionStatus;
 }

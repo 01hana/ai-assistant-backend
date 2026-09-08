@@ -11,6 +11,7 @@ import { QueryUnderstandingModule } from '../query-understanding/query-understan
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { ToolsModule } from '../tools/tools.module';
 import { HostIntegrationModule } from '../host-integration/host-integration.module';
+import { ConnectorsModule } from '../connectors/connectors.module';
 import { AnswerDecisionService } from './answer/answer-decision.service';
 import { ClarificationQuestionService } from './answer/clarification-question.service';
 import { EvidenceConflictDetectorService } from './answer/evidence-conflict-detector.service';
@@ -41,7 +42,8 @@ import { AssistantSseEventBuilder } from './sse/assistant-sse-event.builder';
     ToolsModule,
     MockConnectorModule,
     PermissionsModule,
-    HostIntegrationModule
+    HostIntegrationModule,
+    ConnectorsModule
   ],
   controllers: [AssistantController],
   providers: [

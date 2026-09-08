@@ -346,55 +346,151 @@ ASSISTANT_RUNTIME_REGISTRY_CUTOVER_STARTED=NO
 **Dependencies**: T030.  
 **Independent test**: Unexpected, sensitive, malformed, or oversized adapter data cannot cross the projector boundary.
 
-- [ ] T031 [RED] [US6] Add failing projector shape/policy tests in proposed `test/unit/adapter-result-projector.service.spec.ts`.
+- [x] T031 [RED] [US6] Add failing projector shape/policy tests in proposed `test/unit/adapter-result-projector.service.spec.ts`.
   - Files: `test/unit/adapter-result-projector.service.spec.ts` (new).
   - Depends on: T030.
   - Validation: Cover valid/invalid raw shape, allowed/denied/nested fields, missing policy, invalid policy, and default-deny empty output.
   - Guard: Only resolved `ToolDefinition.outputSchema` may authorize release; adapter metadata and Browser state cannot add fields.
 
-- [ ] T032 [GREEN] [US6] Implement output validation and default-deny projection in proposed `src/connectors/adapter-result-projector.service.ts` with policy types in `src/tools/tool-registry.types.ts`.
+- [x] T032 [GREEN] [US6] Implement output validation and default-deny projection in proposed `src/connectors/adapter-result-projector.service.ts` with policy types in `src/tools/tool-registry.types.ts`.
   - Files: The proposed projector and existing tool-registry types.
   - Depends on: T031.
   - Validation: Make T031 pass and run `npm run typecheck`.
   - Guard: Keep raw output execution-local and return no released field when policy is absent, invalid, or incomplete.
 
-- [ ] T033 [RED] [US6] Extend projector tests for masking and limits in `test/unit/adapter-result-projector.service.spec.ts` and `test/unit/permission-masking.spec.ts`.
+- [x] T033 [RED] [US6] Extend projector tests for masking and limits in `test/unit/adapter-result-projector.service.spec.ts` and `test/unit/permission-masking.spec.ts`.
   - Files: The two listed unit suites.
   - Depends on: T032.
   - Validation: Cover projection-before-masking order, depth, item count, string length, total projected size, and projection/masking/minimization failures.
   - Guard: Failure must release no partial raw or unapproved field and disclose no internal schema detail.
 
-- [ ] T034 [GREEN] [US6] Integrate masking/minimization into the projector through `src/connectors/adapter-result-projector.service.ts`, `src/permissions/llm-input-sanitizer.service.ts`, and `src/permissions/masking.util.ts`.
+- [x] T034 [GREEN] [US6] Integrate masking/minimization into the projector through `src/connectors/adapter-result-projector.service.ts`, `src/permissions/llm-input-sanitizer.service.ts`, and `src/permissions/masking.util.ts`.
   - Files: The three listed files.
   - Depends on: T033.
   - Validation: Make T033 pass; verify the output is bounded `SafeProjectedAdapterResult`.
   - Guard: `visibleColumns` is presentation-only and may narrow but never expand the ToolDefinition release policy.
 
-- [ ] T035 [RED] [US6] Add failing EvidenceRef and grounded-input boundary tests in `test/unit/evidence-ref.service.spec.ts` and proposed `test/unit/grounded-answer-input.spec.ts`.
+- [x] T035 [RED] [US6] Add failing EvidenceRef and grounded-input boundary tests in `test/unit/evidence-ref.service.spec.ts` and proposed `test/unit/grounded-answer-input.spec.ts`.
   - Files: The existing EvidenceRef suite and proposed grounded-input suite.
   - Depends on: T034.
   - Validation: Accept canonical tool key, EvidenceRef identity/provenance, and projected facts only; reject raw data, transient context, credentials, endpoints, adapter config, Browser records, and unvalidated arguments.
   - Guard: Do not add a Customer LLM answer, RAG redesign, or Browser-selected release path.
 
-- [ ] T036 [GREEN] [US6] Implement the projected evidence boundary in `src/evidence/evidence-ref.service.ts`, proposed `src/assistant/runtime/grounded-answer-input.types.ts`, `src/assistant/message/assistant-message.service.ts`, and `src/assistant/page-context/page-context.mapper.ts`.
+- [x] T036 [GREEN] [US6] Implement the projected evidence boundary in `src/evidence/evidence-ref.service.ts`, proposed `src/assistant/runtime/grounded-answer-input.types.ts`, `src/assistant/message/assistant-message.service.ts`, and `src/assistant/page-context/page-context.mapper.ts`.
   - Files: The four listed files.
   - Depends on: T035.
   - Validation: Make T035 pass and rerun `test/integration/authorized-evidence-answer.spec.ts` and `test/integration/field-masking-before-llm.spec.ts`.
   - Guard: EvidenceRef accepts `SafeProjectedAdapterResult`, not raw records plus Browser `visibleColumns`.
 
-- [ ] T037 [RED] [US6] Add failing safe-summary and raw-result sink tests in `test/unit/assistant-readonly-runtime.service.spec.ts`, `test/unit/tool-call.service.spec.ts`, and proposed `test/integration/feature008-raw-result-boundary.spec.ts`.
+### Phase 3 Mock output-contract correction discovered by Phase 4 strict projection — 2026-09-07
+
+- The original Phase 3 parser and `ToolDefinition.outputSchema` policy authority remain valid. T036 strict projection exposed incomplete schema data only for `mock.orders.status.lookup`: its accepted raw result contains string `customerCode` and uses both string and bounded `string[]` status values.
+- The production seed and in-memory fixture now declare `customerCode` while excluding it from `allowedFieldPaths` and `evidenceSafeProvenanceFields`; both policies explicitly deny `organizationId` and `customerCode`. The status contract is the closed `string | string[]` union with string items and 1–100 array items. No Mock fixture or adapter behavior changed.
+- The focused closed-union RED rejected both valid string and string-array variants before implementation. The corrected projector suite passed 22/22 tests and continues to reject numeric arrays, objects, numbers, undeclared fields, and unsupported schema constructs.
+- Final reconciliation validation passed: 5/5 unit suites with 32/32 tests, required T036 evidence/masking integrations with 2/2 suites and 3/3 tests, the fully enabled Customer policy integration with 1/1 suite and 8/8 tests, typecheck, modified-file ESLint, and `git diff --check`. The initial Customer-policy run was blocked only by sandbox `listen EPERM`; the identical permitted rerun passed.
+- The confirmed healthy local development `assistant_dev` database was seeded twice. Both post-correction reads returned the same exact six Mock ToolDefinition keys and SHA-256 fingerprint `b81718228dab0be47688f712a67e24b7e82cf8093a8695d273dd16a33ed44eb7`. The historical Phase 3 fingerprint above remains unchanged as original execution evidence.
+
+```text
+PHASE3_MOCK_OUTPUT_CONTRACT_CORRECTED=YES
+ACTUAL_CUSTOMER_CODE_TYPE=string
+ACTUAL_STATUS_VARIANTS=string,string[]
+ADDITIONAL_UNDECLARED_MOCK_FIELDS=NONE
+CUSTOMER_CODE_DECLARED=YES
+CUSTOMER_CODE_ALLOWED=NO
+CUSTOMER_CODE_EXPLICITLY_DENIED=YES
+CUSTOMER_CODE_EVIDENCE_PROVENANCE=NO
+PROJECTOR_CLOSED_TYPE_UNION_SUPPORTED=YES
+PROJECTOR_UNKNOWN_FIELD_STRICTNESS_PRESERVED=YES
+RESULT_POLICY_SINGLE_AUTHORITY=ToolDefinition.outputSchema
+ALL_SIX_MOCK_POLICIES_VALID=YES
+PHASE3_CORRECTED_POLICY_FINGERPRINT=b81718228dab0be47688f712a67e24b7e82cf8093a8695d273dd16a33ed44eb7
+PRISMA_SCHEMA_MODIFIED=NO
+PRISMA_MIGRATION_CREATED=NO
+PRISMA_SEED_EXECUTION=PASS
+PRISMA_SEED_IDEMPOTENCY=PASS
+T036_REQUIRED_INTEGRATIONS=PASS
+T037_STARTED=NO
+```
+
+- [x] T037 [RED] [US6] Add failing safe-summary and raw-result sink tests in `test/unit/assistant-readonly-runtime.service.spec.ts`, `test/unit/tool-call.service.spec.ts`, and proposed `test/integration/feature008-raw-result-boundary.spec.ts`.
   - Files: The existing runtime suite and two proposed suites.
   - Depends on: T036.
   - Validation: Assert safe input precedes start; safe output derives only from `SafeProjectedAdapterResult`; raw results are absent from ToolCall, evidence, audit/log, telemetry, model, SSE, and responses.
   - Guard: Redaction after ToolCall persistence is insufficient; raw adapter output must never enter ToolCall.
 
-- [ ] T038 [GREEN] [US6] Implement separate safe input/output summary paths in `src/assistant/runtime/tool-call.service.ts`, `src/assistant/runtime/assistant-readonly-runtime.service.ts`, and `src/assistant/message/assistant-message.service.ts`.
+- [x] T038 [GREEN] [US6] Implement separate safe input/output summary paths in `src/assistant/runtime/tool-call.service.ts`, `src/assistant/runtime/assistant-readonly-runtime.service.ts`, and `src/assistant/message/assistant-message.service.ts`.
   - Files: The three listed files.
   - Depends on: T037.
   - Validation: Make T037 pass and preserve existing blocked/started/completed/failed lifecycle assertions.
   - Guard: Safe output summary is created only after projection, masking, and minimization; any later failure transitions the started ToolCall to failed.
 
-- [ ] T039 [VERIFY] [US6] Record the Phase 4 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+### 2026-09-07 T037–T038 execution evidence
+
+- T037 genuine RED was observed before the completion contract changed: the two-unit-suite command failed at TypeScript compilation because `CompleteToolCallInput` did not accept `projectedResult` and still accepted `sanitizedResult`; the initial raw-result-boundary run exposed projected business facts in persisted `ToolCall.outputSummary` (1 failed, 1 passed).
+- T038 narrow GREEN passed with 2/2 unit suites and 22/22 tests plus 1/1 raw-result-boundary integration suite and 2/2 tests. Executable starts persist only the safe input summary; successful completion accepts `SafeProjectedAdapterResult` and derives a metadata-only output summary. Connector throw, returned failure, projection throw/failure, and completion failure all use the failed ToolCall lifecycle with bounded codes.
+- Phase 4 core regression validation passed with 6/6 unit suites and 53/53 tests, 4/4 evidence/masking/transient/raw-boundary integration suites and 7/7 tests, and the fully enabled Customer-policy suite with 1/1 suite and 8/8 tests. The sandboxed Customer-policy attempt hit only the known local-listener `EPERM`; the identical permitted rerun passed.
+- `npm run typecheck`, ESLint over all changed Phase 4 TypeScript files, and `git diff --check` passed. `AssistantMessageService` required no T038 change because its accepted projected-result evidence and grounded-input path was reused unchanged.
+- T039 validation then exposed a pre-existing regression assertion in `test/integration/authorized-tool-execution.spec.ts` that requires business fact values in `ToolCall.outputSummary`. That expectation conflicts with the approved metadata-only T038 contract and is outside the authorized T037 test files. The other two failure-path integrations passed, and the Assistant message/SSE contract passed with 1/1 suite and 6/6 tests. T039 remains incomplete pending human scope reconciliation; T040 was not started.
+
+```text
+T037_RED_OBSERVED=YES
+T037_STATUS=PASS
+T038_STATUS=PASS
+COMPLETE_TOOLCALL_ACCEPTS_ONLY_PROJECTED_RESULT=YES
+METADATA_ONLY_OUTPUT_SUMMARY=YES
+PROJECTED_FACT_VALUES_IN_TOOLCALL=NO
+RAW_RESULT_IN_TOOLCALL=NO
+CONNECTOR_THROW_POST_START_FAILED=YES
+PROJECTION_THROW_POST_START_FAILED=YES
+PROJECTION_FAILURE_POST_START_FAILED=YES
+COMPLETION_FAILURE_POST_START_FAILED=YES
+RAW_RESULT_BOUNDARY_INTEGRATION=PASS
+TYPECHECK=PASS
+MODIFIED_FILE_LINT=PASS
+T039_STATUS=FAIL
+T039_BLOCKER=AUTHORIZED_TOOL_EXECUTION_TEST_REQUIRES_PROHIBITED_BUSINESS_VALUES_IN_TOOLCALL_OUTPUT_SUMMARY
+T040_STARTED=NO
+```
+
+### Phase 4 T039 authorized-tool-execution stale assertion reconciliation — 2026-09-07
+
+- Human review authorized one test-only correction in `test/integration/authorized-tool-execution.spec.ts`; production implementation, test fixtures, seed data, Prisma, and public contracts were unchanged.
+- The old integration assertion required `availableQuantity: 36` and `incomingQuantity: 120` inside `ToolCall.outputSummary`. The approved T038 contract instead persists only canonical tool/schema identity, projected field names/count, and evidence-provenance field names.
+- The reconciled assertion verifies the exact metadata-only inventory summary and explicitly excludes quantities, `SKU-DEMO-RED`, and `WH-DEMO-TPE`. Authorized business execution remains verified through EvidenceRef facts/provenance and the unchanged final deterministic answer/SSE path.
+- The reconciled integration passed alone with 1/1 suite and 1/1 test. The complete checkpoint passed with 6/6 unit suites and 53/53 tests, 7/7 integration suites and 10/10 tests, the fully enabled Customer-policy suite with 1/1 suite and 8/8 tests, and the Assistant messages/SSE contract with 1/1 suite and 6/6 tests. The sandboxed Customer-policy attempt hit only local-listener `EPERM`; the identical permitted rerun passed.
+- `npm run typecheck`, ESLint over all changed Phase 4 TypeScript files, and `git diff --check` passed. Final inspection confirmed direct `MockConnectorAdapter` injection remains active, no `DataAdapterRegistry` runtime cutover exists, and T040 remains unstarted.
+
+```text
+AUTHORIZED_TOOL_EXECUTION_STALE_ASSERTION_RECONCILED=YES
+PUBLIC_CONTRACT_CHANGED=NO
+PUBLIC_ASSISTANT_CONTRACT_CHANGED=NO
+PRODUCTION_CODE_MODIFIED_BY_RECONCILIATION=NO
+TEST_FIXTURE_MODIFIED_BY_RECONCILIATION=NO
+TOOLCALL_OUTPUT_SUMMARY_MODE=METADATA_ONLY
+PROJECTED_FACT_VALUES_IN_TOOLCALL=NO
+BUSINESS_RESULT_VERIFIED_AT=EvidenceRef_and_final_deterministic_answer
+SERVER_OWNED_PROJECTION_READY=YES
+RAW_RESULT_TRANSIENT_ONLY=YES
+EVIDENCE_BOUNDARY_READY=YES
+RESULT_POLICY_SINGLE_AUTHORITY=ToolDefinition.outputSchema
+SAFE_TOOL_INPUT_SUMMARY_READY=YES
+SAFE_TOOL_OUTPUT_SUMMARY_READY=YES
+RAW_RESULT_IN_TOOLCALL=NO
+RAW_RESULT_IN_EVIDENCE=NO
+RAW_RESULT_IN_AUDIT=NO
+RAW_RESULT_IN_LOGS=NO
+RAW_RESULT_IN_TELEMETRY=NO
+RAW_RESULT_IN_MODEL_INPUT=NO
+RAW_RESULT_IN_SSE=NO
+RAW_RESULT_IN_PUBLIC_RESPONSE=NO
+POST_START_FAILURE_TOOLCALL_FAILED=YES
+DIRECT_MOCK_RUNTIME_PATH_STILL_ACTIVE=YES
+ASSISTANT_RUNTIME_REGISTRY_CUTOVER_STARTED=NO
+T039_STATUS=PASS
+T040_STARTED=NO
+```
+
+- [x] T039 [VERIFY] [US6] Record the Phase 4 checkpoint in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: This task file for evidence; Phase 4 files are validation inputs only.
   - Depends on: T038.
   - Validation: Run all Phase 4 suites, relevant masking/evidence integrations, and `npm run typecheck`.
