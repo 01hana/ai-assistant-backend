@@ -63,4 +63,50 @@ describe('GroundedAnswerInput', () => {
 
     expect(input.evidence).toEqual([]);
   });
+
+  it('does not copy forbidden siblings from evidence or projected-result cast inputs', () => {
+    const input = createGroundedAnswerInput({
+      toolCallId: 'tool-call-closed-boundary',
+      projectedResult: {
+        kind: 'safe_projected_adapter_result',
+        canonicalToolKey: 'mock.inventory.availability.lookup',
+        schemaVersion: '1.0.0',
+        facts: { availableQuantity: 36 },
+        fieldPaths: ['availableQuantity'],
+        evidenceProvenance: { itemSku: 'SKU-DEMO-RED' },
+        rawConnectorResult: 'RAW_RESULT_BYPASS_SENTINEL',
+        connectorContextRef: 'ccr_ANSWER_BYPASS',
+        browserRecord: { nativeCredential: 'RefreshToken ANSWER_BYPASS' }
+      } as SafeProjectedAdapterResult,
+      evidenceRefs: [
+        {
+          id: 'evidence-closed-boundary',
+          sourceType: EvidenceSourceType.structured_record,
+          sourceId: 'SKU-DEMO-RED',
+          endpoint: 'https://customer.internal.example',
+          adapterConfiguration: 'ANSWER_ADAPTER_CONFIG_SENTINEL'
+        } as {
+          id: string;
+          sourceType: EvidenceSourceType;
+          sourceId: string;
+        }
+      ]
+    });
+
+    expect(input).toEqual({
+      toolCallId: 'tool-call-closed-boundary',
+      canonicalToolKey: 'mock.inventory.availability.lookup',
+      evidence: [
+        {
+          evidenceRefId: 'evidence-closed-boundary',
+          sourceType: 'structured_record',
+          sourceId: 'SKU-DEMO-RED',
+          projectedFacts: { availableQuantity: 36 }
+        }
+      ]
+    });
+    expect(JSON.stringify(input)).not.toMatch(
+      /RAW_RESULT_BYPASS_SENTINEL|ccr_ANSWER_BYPASS|RefreshToken|customer\.internal|ANSWER_ADAPTER_CONFIG_SENTINEL/
+    );
+  });
 });

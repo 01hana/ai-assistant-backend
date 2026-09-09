@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import process from 'node:process';
 
 const localKid = 'shinmone-scm-local-2026-01';
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));

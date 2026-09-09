@@ -20,7 +20,8 @@ function publicHttps(value: unknown, category: string): string {
   if (host === 'localhost' || host.endsWith('.localhost') || isIP(host)) throw new BridgeConfigurationError(category);
   return uri;
 }
-export function required(value: unknown): string { if (typeof value !== 'string' || !value.trim() || /[\u0000-\u001f\u007f]/.test(value)) throw new BridgeConfigurationError('required'); return value.trim(); }
+export function required(value: unknown): string { if (typeof value !== 'string' || !value.trim() || containsControlCharacter(value)) throw new BridgeConfigurationError('required'); return value.trim(); }
 function csv(value: unknown): string[] { if (value === undefined || value === '') return []; if (typeof value !== 'string') throw new BridgeConfigurationError('list'); const values = value.split(',').map((v) => v.trim()); if (values.some((v) => !v)) throw new BridgeConfigurationError('list'); return values; }
 function cidr(value: string): boolean { const [address, prefix, ...rest] = value.split('/'); if (rest.length || !address || !/^\d+$/.test(prefix ?? '')) return false; const family = isIP(address); return (family === 4 && Number(prefix) <= 32) || (family === 6 && Number(prefix) <= 128); }
 export class BridgeConfigurationError extends Error { constructor(readonly category: string) { super(`Invalid Bridge configuration: ${category}.`); } }
+function containsControlCharacter(value: string): boolean { return [...value].some((character) => { const code = character.charCodeAt(0); return code <= 0x1f || code === 0x7f; }); }

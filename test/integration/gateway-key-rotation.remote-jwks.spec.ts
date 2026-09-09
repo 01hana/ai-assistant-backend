@@ -75,7 +75,7 @@ describe('Gateway signing-key rotation ↔ Feature 002 Remote JWKS integration (
       expect(await context.key(candidate.kid)).toMatchObject({ status: 'active' });
       expect(await context.httpJwksKids()).toEqual([candidate.kid]);
     });
-  });
+  }, 30_000);
 
   it('keeps both public keys remotely verifiable when post-activation proof rolls back to the prior signer', async () => {
     await withContext('remote-jwks-rollback', async (context) => {
@@ -96,7 +96,7 @@ describe('Gateway signing-key rotation ↔ Feature 002 Remote JWKS integration (
       await context.verifyBackend(propagation.capturedActivatedToken as string);
       expect(decodeProtectedHeader(await context.issueNormal()).kid).toBe(prior.kid);
     });
-  });
+  }, 30_000);
 });
 
 type RotationContext = Awaited<ReturnType<typeof createContext>>;

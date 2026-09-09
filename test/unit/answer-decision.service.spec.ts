@@ -65,6 +65,58 @@ describe('AnswerDecisionService', () => {
 
     expect(result.status).toBe(AnswerDecisionStatus.no_answer);
   });
+
+  it('consumes projected adapter evidence only through GroundedAnswerInput', async () => {
+    const groundingCreate = jest.fn().mockResolvedValue({ id: 'grounding-grounded' });
+    const answerCreate = jest.fn().mockResolvedValue({ id: 'answer-grounded' });
+    const service = new AnswerDecisionService({
+      db: {
+        groundingCheck: { create: groundingCreate },
+        answerDecision: { create: answerCreate }
+      }
+    } as unknown as PrismaService);
+
+    const result = await service.decideGrounded({
+      customerScope: createCustomerScopeFixtureScope(CUSTOMER_SCOPE_FIXTURES.customerA),
+      requestId: 'req-grounded',
+      messageId: 'message-grounded',
+      executionPlan: createPlan(ExecutionDecision.continue),
+      groundedAnswerInput: {
+        toolCallId: 'tool-call-grounded',
+        canonicalToolKey: 'mock.orders.status.lookup',
+        evidence: [
+          {
+            evidenceRefId: 'evidence-grounded',
+            sourceType: 'structured_record',
+            sourceId: 'SO-10001',
+            projectedFacts: { status: '已確認' }
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe(AnswerDecisionStatus.answered);
+    expect(result.answer.text).toContain('已確認');
+    expect(groundingCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ evidenceRefIds: ['evidence-grounded'] })
+      })
+    );
+  });
+
+  it('does not accept legacy arbitrary evidence summaries on the grounded adapter seam', async () => {
+    const service = createService();
+
+    await service.decideGrounded({
+      customerScope: createCustomerScopeFixtureScope(CUSTOMER_SCOPE_FIXTURES.customerA),
+      requestId: 'req-grounded-legacy',
+      messageId: 'message-grounded-legacy',
+      executionPlan: createPlan(ExecutionDecision.continue),
+      groundedAnswerInput: undefined,
+      // @ts-expect-error Grounded adapter decisions cannot accept arbitrary legacy evidence summaries.
+      evidenceRefs: [{ id: 'legacy-evidence', summary: { rawResult: 'RAW_ADAPTER_SENTINEL' } }]
+    });
+  });
 });
 
 function createService() {

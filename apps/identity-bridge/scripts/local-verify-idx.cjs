@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
-const { readFileSync } = require('node:fs');
-const { join, resolve } = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { readFileSync } = module.require('node:fs');
+const { join, resolve } = module.require('node:path');
+const { spawnSync } = module.require('node:child_process');
 
 const bridgeRoot = resolve(__dirname, '..');
 const composeFile = join(bridgeRoot, 'compose.yaml');
@@ -186,8 +186,8 @@ function readHiddenToken(options = {}) {
       input.off('data', onData);
       input.off('error', onInputError);
       input.off('end', onInputEnd);
-      try { input.pause(); } catch {}
-      try { input.setRawMode(wasRaw); } catch {}
+      try { input.pause(); } catch { /* cleanup remains best-effort */ }
+      try { input.setRawMode(wasRaw); } catch { /* cleanup remains best-effort */ }
       output.write('\n');
     };
     const rejectSafe = (reason) => { cleanup(); rejectToken(new Error(reason)); };

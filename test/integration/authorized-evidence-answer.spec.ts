@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request = require('supertest');
 import { MockConnectorAdapter } from '../../src/connectors/mock/mock-connector.adapter';
+import { AnswerDecisionService } from '../../src/assistant/answer/answer-decision.service';
 import * as groundedAnswer from '../../src/assistant/runtime/grounded-answer-input.types';
 import {
   createIdentityHeaders,
@@ -22,6 +23,8 @@ describe('authorized evidence-grounded answer integration', () => {
   });
 
   it('returns an answered final SSE event with traceable evidence refs for an authorized query', async () => {
+    const answerDecision = app.get(AnswerDecisionService);
+    const decideGrounded = jest.spyOn(answerDecision, 'decideGrounded');
     const response = await request(app.getHttpServer())
       .post('/api/v1/assistant/sessions/session-owned-001/messages')
       .set(createIdentityHeaders({ 'x-request-id': 'req-us1-authorized-answer' }))
@@ -55,6 +58,24 @@ describe('authorized evidence-grounded answer integration', () => {
         })
       })
     );
+    expect(decideGrounded).toHaveBeenCalledTimes(1);
+    const groundedDecisionInput = decideGrounded.mock.calls[0]?.[0];
+    expect(groundedDecisionInput).toEqual(
+      expect.objectContaining({
+        groundedAnswerInput: expect.objectContaining({
+          canonicalToolKey: 'mock.orders.status.lookup',
+          evidence: [
+            expect.objectContaining({
+              sourceType: 'structured_record',
+              sourceId: 'SO-10001',
+              projectedFacts: expect.objectContaining({ status: 'picking' })
+            })
+          ]
+        })
+      })
+    );
+    expect(groundedDecisionInput).not.toHaveProperty('evidenceRefs');
+    decideGrounded.mockRestore();
   });
 
   it('keeps declared-but-denied customerCode out of projected evidence, grounded input, SSE, and public output', async () => {

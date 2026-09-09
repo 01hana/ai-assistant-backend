@@ -3,27 +3,15 @@ import { DOMAIN_LEXICON } from '../../src/query-understanding/domain-lexicon';
 import { RuleBasedQueryUnderstandingPipeline } from '../../src/query-understanding/rule-based-query-understanding.pipeline';
 import { TokenizerAdapter } from '../../src/query-understanding/tokenizer-adapter.interface';
 
-const identityContext = {
+const hostIntegrationContext = {
   requestId: 'req-tokenizer-001',
-  customer: {
-    customerId: 'customer-a',
-    integrationId: 'integration-erp'
-  },
-  organization: {
-    organizationId: 'org-001'
-  },
-  actor: {
-    actorId: 'actor-001',
-    roles: ['planner'],
-    permissionScopes: ['orders:read', 'inventory:read']
-  },
-  hostApp: {
-    hostApp: 'erp'
-  },
-  auth: {
-    tokenId: 'jwt-tokenizer-001',
-    gatewayIssuer: 'https://gateway.test.internal'
-  }
+  customerId: 'customer-a',
+  integrationId: 'integration-erp',
+  organizationId: 'org-001',
+  actorId: 'actor-001',
+  roles: ['planner'] as const,
+  permissionScopes: ['orders:read', 'inventory:read'] as const,
+  hostApp: 'erp'
 };
 
 describe('Traditional Chinese tokenizer', () => {
@@ -35,7 +23,7 @@ describe('Traditional Chinese tokenizer', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '查 SO-10001 狀態。再看庫存！可以嗎?',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.sentences.map((sentence) => sentence.text)).toEqual([
@@ -53,7 +41,7 @@ describe('Traditional Chinese tokenizer', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '幫我查 SO-10001 的狀態，順便看 SKU-ABC-001 的庫存',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.tokens).toEqual(
@@ -134,7 +122,7 @@ describe('Traditional Chinese tokenizer', () => {
       sessionId: 'session-001',
       messageId: 'message-004',
       text: 'anything',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(fakeTokenizer.tokenize).toHaveBeenCalled();

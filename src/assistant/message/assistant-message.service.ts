@@ -869,22 +869,19 @@ export class AssistantMessageService {
       });
     }
 
-    const groundedAnswerInput = runtimeResult.projectedResult && runtimeResult.toolCallId
+    const groundedAnswerInput = runtimeResult.projectedResult && runtimeResult.toolCallId && evidenceRef
       ? createGroundedAnswerInput({
           toolCallId: runtimeResult.toolCallId,
           projectedResult: runtimeResult.projectedResult,
-          evidenceRefs: evidenceRef ? [evidenceRef] : []
+          evidenceRefs: [evidenceRef]
         })
       : undefined;
-    const answerDecision = await this.answerDecisionService.decide({
+    const answerDecision = await this.answerDecisionService.decideGrounded({
       customerScope,
       requestId: input.requestId,
       messageId: assistantMessage.id,
       executionPlan: planningResult.executionPlan,
-      evidenceRefs: groundedAnswerInput?.evidence.map((evidence) => ({
-        id: evidence.evidenceRefId,
-        summary: evidence.projectedFacts as Record<string, unknown>
-      })) ?? []
+      groundedAnswerInput
     });
 
     await this.messageRepository.completeAssistantMessage({

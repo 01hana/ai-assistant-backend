@@ -34,7 +34,7 @@ function allowedEntries(value: unknown): readonly string[] {
   if (!Array.isArray(parsed) || parsed.length === 0) throw new BridgeConfigurationError('allowed_entries');
   const seen = new Set<string>();
   const entries = parsed.map((entry) => {
-    if (typeof entry !== 'string' || !entry.trim() || entry !== entry.trim() || /[\u0000-\u001f\u007f]/.test(entry) || seen.has(entry)) throw new BridgeConfigurationError('allowed_entries');
+    if (typeof entry !== 'string' || !entry.trim() || entry !== entry.trim() || containsControlCharacter(entry) || seen.has(entry)) throw new BridgeConfigurationError('allowed_entries');
     seen.add(entry);
     return entry;
   });
@@ -58,3 +58,4 @@ function safeReference(value: unknown): string {
 }
 function privateJwk(value: Record<string, unknown>): boolean { return ['d', 'p', 'q', 'dp', 'dq', 'qi', 'oth', 'k'].some((key) => key in value); }
 function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null); }
+function containsControlCharacter(value: string): boolean { return [...value].some((character) => { const code = character.charCodeAt(0); return code <= 0x1f || code === 0x7f; }); }

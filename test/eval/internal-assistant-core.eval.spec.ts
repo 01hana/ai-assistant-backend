@@ -17,50 +17,46 @@ type TestApp = {
 };
 
 describe('internal assistant core deterministic eval baseline', () => {
-  const identityContext = {
+  const hostIntegrationContext = {
     requestId: 'req-eval-query-understanding',
-    customer: {
-      customerId: 'customer-a',
-      integrationId: 'integration-erp'
-    },
-    actor: {
-      actorId: 'actor-001',
-      roles: ['planner'],
-      permissionScopes: ['orders:read', 'inventory:read']
-    },
-    hostApp: {
-      hostApp: 'erp'
-    },
-    organization: {
-      organizationId: 'org-001'
-    },
-    auth: {
-      tokenId: 'jti-eval-query-understanding',
-      gatewayIssuer: 'https://gateway.test.internal'
-    }
+    customerId: 'customer-a',
+    integrationId: 'integration-erp',
+    organizationId: 'org-001',
+    hostApp: 'erp',
+    actorId: 'actor-001',
+    roles: ['planner'] as const,
+    permissionScopes: ['orders:read', 'inventory:read'] as const
   };
 
   it('query-understanding-routing-and-entities', async () => {
     const pipeline = new RuleBasedQueryUnderstandingPipeline();
 
-    const structuredResult = await pipeline.understand({
+    const structuredInput = {
       requestId: 'req-eval-query-understanding-structured',
       sessionId: 'session-eval',
       messageId: 'message-eval-structured',
       text: '幫我查 SO-10001 的狀態，順便看 SKU-ABC-001 的庫存',
-      identityContext,
+      hostIntegrationContext,
       now: new Date('2026-06-22T00:00:00.000Z'),
       timezone: 'Asia/Taipei'
-    });
-    const documentResult = await pipeline.understand({
+    };
+    const documentInput = {
       requestId: 'req-eval-query-understanding-document',
       sessionId: 'session-eval',
       messageId: 'message-eval-document',
       text: '退貨流程 SOP 怎麼說？',
-      identityContext,
+      hostIntegrationContext,
       now: new Date('2026-06-22T00:00:00.000Z'),
       timezone: 'Asia/Taipei'
-    });
+    };
+    for (const input of [structuredInput, documentInput]) {
+      expect(input).not.toHaveProperty('identityContext');
+      expect(input).not.toHaveProperty('transientConnectorContext');
+      expect(input).not.toHaveProperty('connectorContextRef');
+    }
+
+    const structuredResult = await pipeline.understand(structuredInput);
+    const documentResult = await pipeline.understand(documentInput);
 
     expect(structuredResult.entityCandidates).toEqual(
       expect.arrayContaining([

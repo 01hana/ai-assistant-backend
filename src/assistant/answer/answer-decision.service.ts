@@ -2,12 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { AnswerDecisionStatus, ExecutionDecision, NoAnswerReason } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GroundedAnswerInput } from '../runtime/grounded-answer-input.types';
 import {
   AnswerPlan,
   BuildAnswerDecisionInput,
   PersistedAnswerDecisionResult,
   RecordSafeAnswerDecisionInput
 } from './answer-decision.types';
+
+type GroundedAnswerDecisionInput = Omit<BuildAnswerDecisionInput, 'evidenceRefs'> & {
+  readonly groundedAnswerInput?: GroundedAnswerInput;
+  readonly evidenceRefs?: never;
+};
 
 @Injectable()
 export class AnswerDecisionService {
@@ -57,6 +63,20 @@ export class AnswerDecisionService {
       groundingCheckId: groundingCheck.id,
       answerDecisionId: answerDecision.id
     };
+  }
+
+  async decideGrounded(input: GroundedAnswerDecisionInput): Promise<PersistedAnswerDecisionResult> {
+    return this.decide({
+      customerScope: input.customerScope,
+      requestId: input.requestId,
+      messageId: input.messageId,
+      executionPlan: input.executionPlan,
+      evidenceRefs:
+        input.groundedAnswerInput?.evidence.map((evidence) => ({
+          id: evidence.evidenceRefId,
+          summary: evidence.projectedFacts as Record<string, unknown>
+        })) ?? []
+    });
   }
 
   async recordSafeDecision(input: RecordSafeAnswerDecisionInput): Promise<PersistedAnswerDecisionResult> {

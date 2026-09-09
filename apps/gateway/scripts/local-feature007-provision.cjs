@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
-const { randomUUID } = require('node:crypto');
-const { isIP } = require('node:net');
-const { resolve } = require('node:path');
+const { randomUUID } = module.require('node:crypto');
+const { isIP } = module.require('node:net');
+const { resolve } = module.require('node:path');
 
 const AUTHORITY = Object.freeze({
   customerId: 'customer-shinmone-scm-local',
@@ -154,15 +154,15 @@ function nonBlank(value) { return typeof value === 'string' && value.trim().leng
 
 function createRuntimeDependencies(databaseUrl) {
   const dist = resolve(__dirname, '../dist');
-  const { GatewayIdentityAuditWriter } = require(resolve(dist, 'audit/gateway-identity-audit.writer.js'));
-  const { ProvisionIntegrationBindingCommand, ProvisionIntegrationBindingService } = require(resolve(dist, 'commands/provision-integration-binding.js'));
-  const { ProvisionTrustProfileCommand } = require(resolve(dist, 'commands/provision-trust-profile.js'));
-  const { createGatewayPrismaClient } = require(resolve(dist, 'integration-registry/gateway-prisma-client.factory.js'));
-  const { IntegrationBindingRepository } = require(resolve(dist, 'integration-registry/integration-binding.repository.js'));
-  const { TrustProfileActivationValidator, ProductionJwksSourceRegistrationPolicy } = require(resolve(dist, 'integration-registry/trust-profile-activation.validator.js'));
-  const { TrustProfileRepository } = require(resolve(dist, 'integration-registry/trust-profile.repository.js'));
-  const { TrustProfileRuntimeReadiness } = require(resolve(dist, 'integration-registry/trust-profile-runtime-readiness.service.js'));
-  const { HardenedJwksTransport } = require(resolve(dist, 'upstream-auth/jwks-transport.adapter.js'));
+  const { GatewayIdentityAuditWriter } = module.require(resolve(dist, 'audit/gateway-identity-audit.writer.js'));
+  const { ProvisionIntegrationBindingCommand, ProvisionIntegrationBindingService } = module.require(resolve(dist, 'commands/provision-integration-binding.js'));
+  const { ProvisionTrustProfileCommand } = module.require(resolve(dist, 'commands/provision-trust-profile.js'));
+  const { createGatewayPrismaClient } = module.require(resolve(dist, 'integration-registry/gateway-prisma-client.factory.js'));
+  const { IntegrationBindingRepository } = module.require(resolve(dist, 'integration-registry/integration-binding.repository.js'));
+  const { TrustProfileActivationValidator, ProductionJwksSourceRegistrationPolicy } = module.require(resolve(dist, 'integration-registry/trust-profile-activation.validator.js'));
+  const { TrustProfileRepository } = module.require(resolve(dist, 'integration-registry/trust-profile.repository.js'));
+  const { TrustProfileRuntimeReadiness } = module.require(resolve(dist, 'integration-registry/trust-profile-runtime-readiness.service.js'));
+  const { HardenedJwksTransport } = module.require(resolve(dist, 'upstream-auth/jwks-transport.adapter.js'));
   const client = createGatewayPrismaClient(databaseUrl);
   const bindingRepository = new IntegrationBindingRepository(client);
   const profileRepository = new TrustProfileRepository(client);

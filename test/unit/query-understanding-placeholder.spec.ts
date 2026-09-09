@@ -15,18 +15,27 @@ describe('RuleBasedQueryUnderstandingPipeline', () => {
   };
 
   it('produces deterministic task type, candidate tools, and risk level for an order query', async () => {
-    const result = await service.understand({
+    const input = {
       requestId: 'req-qu-001',
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '請幫我查 SO-10001 訂單目前狀態',
       hostIntegrationContext
-    });
+    };
+
+    expect(input).not.toHaveProperty('identityContext');
+    expect(input).not.toHaveProperty('transientConnectorContext');
+    expect(input).not.toHaveProperty('connectorContextRef');
+
+    const result = await service.understand(input);
 
     expect(result.taskType).toBe('order_status_lookup');
     expect(result.candidateTools).toEqual([
       {
         key: 'mock.orders.status.lookup',
+        arguments: {
+          entityId: 'SO-10001'
+        },
         reason: 'order status query'
       }
     ]);

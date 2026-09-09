@@ -654,47 +654,144 @@ PHASE5_CORRECTED_STATUS=PASS
 **Dependencies**: T048.  
 **Independent test**: Only projected evidence reaches deterministic answering; all prohibited inputs/surfaces and public-contract regressions fail the release gate.
 
-- [ ] T049 [RED] [US7] Add failing final answer-generation wiring tests in `test/unit/answer-decision.service.spec.ts`, `test/unit/grounded-answer-input.spec.ts`, and `test/integration/authorized-evidence-answer.spec.ts`.
+- [x] T049 [RED] [US7] Add failing final answer-generation wiring tests in `test/unit/answer-decision.service.spec.ts`, `test/unit/grounded-answer-input.spec.ts`, and `test/integration/authorized-evidence-answer.spec.ts`.
   - Files: The existing answer-decision and evidence suites plus the proposed grounded-input suite established in Phase 4.
   - Depends on: T048.
   - Validation: Fail until existing deterministic answer generation/`AnswerDecisionService` consumes the generic `GroundedAnswerInput`; prove canonical ToolDefinition key, projected facts, and EvidenceRef provenance reach answering only through that input, while raw adapter results, connectorContextRef, Browser raw records, and legacy raw connector-result shapes cannot bypass it.
   - Guard: This RED covers final answer wiring, not Phase 4's already-established structural boundary; preserve expected deterministic mock semantics and do not introduce a real Customer LLM answer, RAG/prompt redesign, Customer adapter, or new AnswerDecision.
 
-- [ ] T050 [GREEN] [US7] Complete generic grounded-answer wiring in `src/assistant/runtime/grounded-answer-input.types.ts`, `src/assistant/message/assistant-message.service.ts`, and `src/assistant/answer/answer-decision.service.ts`.
+- [x] T050 [GREEN] [US7] Complete generic grounded-answer wiring in `src/assistant/runtime/grounded-answer-input.types.ts`, `src/assistant/message/assistant-message.service.ts`, and `src/assistant/answer/answer-decision.service.ts`.
   - Files: The three listed files.
   - Depends on: T049.
   - Validation: Make T049 pass; rerun answer-decision, evidence, masking-before-LLM, and deterministic mock tests.
   - Guard: Preserve existing AnswerDecision values and no-answer mapping; no raw adapter data or connectorContextRef may reach answer generation.
 
-- [ ] T051 [VERIFY] [US7] Run focused Feature 008 security verification across `test/integration/feature008-transient-boundary.spec.ts`, `test/integration/feature008-raw-result-boundary.spec.ts`, `test/integration/feature008-runtime-cutover.spec.ts`, `test/integration/secret-redaction.spec.ts`, and `test/integration/tool-permission-denied.spec.ts`.
+- [x] T051 [VERIFY] [US7] Run focused Feature 008 security verification across `test/integration/feature008-transient-boundary.spec.ts`, `test/integration/feature008-raw-result-boundary.spec.ts`, `test/integration/feature008-runtime-cutover.spec.ts`, `test/integration/secret-redaction.spec.ts`, and `test/integration/tool-permission-denied.spec.ts`.
   - Files: The five listed integration suites; no source edits in this task.
   - Depends on: T050.
   - Validation: Verify permission order, cross-Customer isolation, Browser non-authority, native-credential exclusion, transient-reference isolation, raw Browser/result exclusion, canonical ToolDefinition authority, and outputSchema-only release.
   - Guard: Any prohibited-surface observation is a release blocker; do not downgrade it to a warning.
 
-- [ ] T052 [VERIFY] [US7] Run public compatibility guards in `test/contract/assistant-sessions.contract.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`, `test/contract/feedback.contract.spec.ts`, `test/contract/approval-requests.contract.spec.ts`, and `test/contract/gateway-internal-identity.contract.spec.ts`.
+- [x] T052 [VERIFY] [US7] Run public compatibility guards in `test/contract/assistant-sessions.contract.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`, `test/contract/feedback.contract.spec.ts`, `test/contract/approval-requests.contract.spec.ts`, and `test/contract/gateway-internal-identity.contract.spec.ts`.
   - Files: The five listed contract suites; no expected updates.
   - Depends on: T051.
   - Validation: Run the focused files and then `npm run test:contract -- --runInBand`.
   - Guard: No new/breaking Assistant API mode, endpoint, SSE shape, AnswerDecision, SDK API, or Gateway identity authority is permitted.
 
-- [ ] T053 [VERIFY] [US7] Execute full repository validation using `package.json` scripts.
+- [x] T053 [VERIFY] [US7] Execute full repository validation using `package.json` scripts.
   - Files: `package.json` is command reference only; do not modify it.
   - Depends on: T052.
   - Validation: Run `npm run test:unit -- --runInBand`, `npm run test:integration -- --runInBand`, `npm run test:contract -- --runInBand`, `npm run typecheck`, `npm run lint`, `npm run build`, and `npm run test`.
   - Guard: Do not invent scripts, rewrite snapshots merely to pass, or run Prisma migration commands.
 
-- [ ] T054 [VERIFY] [US7] Inspect final scope and historical-feature isolation through `prisma/schema.prisma`, `prisma/migrations/`, `src/assistant/`, `src/connectors/`, `.specify/feature.json`, and optional `specs/002-host-integration-gateway-and-data-adapter-contract/`.
+- [x] T054 [VERIFY] [US7] Inspect final scope and historical-feature isolation through `prisma/schema.prisma`, `prisma/migrations/`, `src/assistant/`, `src/connectors/`, `.specify/feature.json`, and optional `specs/002-host-integration-gateway-and-data-adapter-contract/`.
   - Files: The listed areas are read-only inspection targets; the historical directory may be absent, and `spec.md`, `design.md`, `plan.md`, `.specify/feature.json`, and historical Feature 002 must remain unchanged by Feature 008.
   - Depends on: T053.
   - Validation: Use `git diff --check`, `git diff --name-only`, `git status`, active-feature metadata inspection, targeted `rg` checks for direct mock injection/wildcards/fallbacks/prohibited Customer terms, and schema/migration diff inspection; verify Feature 008 did not recreate, restore, modify, activate, or newly point metadata back to historical Feature 002. Treat the currently absent historical tree and any unchanged pre-existing metadata value as baseline state, not as a reason to create or modify it.
   - Guard: The previously incorrect historical path reference must remain absent; do not require the historical tree to exist or inspect historical commit `e5e7a7c` except for optional read-only comparison. No Prisma migration, Feature 002 activation, Feature 009 implementation, real Customer endpoint/data/credential, write operation, generic SQL/HTTP proxy, or production deployment task may remain.
 
-- [ ] T055 [VERIFY] [US7] Record the final Feature 008 acceptance report in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
+- [x] T055 [VERIFY] [US7] Record the final Feature 008 acceptance report in `specs/008-generic-host-integration-data-adapter-foundation/tasks.md`.
   - Files: This task file for acceptance evidence only.
   - Depends on: T054.
   - Validation: Confirm every task/checkpoint and required full command is green, or report the exact unresolved blocker without claiming completion.
   - Guard: Implement no new behavior; completion requires the full machine-readable report defined below and `FEATURE008_SECURITY_CLOSEOUT=PASS`, `FEATURE008_PUBLIC_COMPATIBILITY=PASS`, and `FEATURE008_IMPLEMENTATION_READY_FOR_ACCEPTANCE=YES`.
+
+### Phase 6 final execution and acceptance history — 2026-09-09
+
+- T049 observed a genuine RED because `AnswerDecisionService.decideGrounded` was missing. T050 GREEN completed structured adapter answering through `GroundedAnswerInput` only, while preserving the existing public answer decisions and deterministic mock behavior.
+- T051 focused Feature 008 security verification passed. T052 focused and full public compatibility verification passed.
+- The first T053 attempt stopped at full lint with 41 pre-existing unrelated errors: 12 Gateway, 29 Identity Bridge, 0 Feature 008, and 0 other. Separate approved lint maintenance repaired those eight unrelated files; their focused tests, typecheck, build, and final repository lint passed without modifying Feature 008 files.
+- The next T053 full-unit run exposed four stale previous-phase unit suites: three still supplied obsolete `identityContext`, and one expected a pre-Phase-3 candidate without structured `arguments`. The test-only reconciliation passed 4/4 suites and 13/13 tests, typecheck, and targeted lint. The corrected full-unit run then passed, but integration stopped because the approved disposable `assistant_test` database was absent.
+- Environment-only recovery verified `localhost:5435/assistant_test`, `NODE_ENV=test`, and `ALLOW_TEST_DB_RESET=true`; created only `assistant_test`, applied all nine migrations, ran the guarded test initializer, and left `assistant_dev` untouched. The focused reset/migration/seed contract then passed 1/1.
+- A restarted T053 reached the final aggregate and exposed one stale eval `identityContext` fixture plus a Remote-JWKS case exceeding Jest's default five-second budget under parallel aggregate load. The eval-only host-context reconciliation passed 1/1 suite and 10/10 tests. The unchanged Remote-JWKS suite passed twice in isolation at the default budget (4.719 seconds and 4.827 seconds), while the aggregate continued to time out without any substantive Gateway, database, JWKS, or assertion failure.
+- Human review classified the aggregate-only failure as test-harness contention and authorized a per-test 30-second budget for both existing Remote-JWKS cases. Only the two timeout arguments changed; all assertions and production behavior were preserved. Normal-settings verification passed 1/1 suite and 2/2 tests with zero skips, followed by typecheck and targeted lint.
+- The final T053 restart passed all seven required commands. Unit passed 70 suites with 1 configured skip and 415 tests with 3 configured skips. Integration passed 46 suites with 17 configured skips and 159 tests with 131 configured skips. Contract passed 10 suites with 3 configured skips and 44 tests with 39 configured skips. Typecheck, full lint, and build passed. The final aggregate passed 127 suites with 22 configured skips and 628 tests with 176 configured skips.
+- T054 read-only inspection passed `git diff --check` and partitioned the tree into Feature 008 implementation, separately approved lint maintenance, and test-only reconciliation. There is no Prisma schema/migration diff, no `.specify/feature.json` or Feature 002 diff, no readonly Assistant direct-Mock execution, no registry fallback/wildcard/Customer branch, no Feature 009 or real Shinmone data path, and no generic SQL/HTTP proxy. The pre-existing side-effect approval direct-Mock path remains intentionally unmigrated; the unchanged observability Mock health probe is an approved non-runtime baseline occurrence.
+
+```text
+T049_RED_OBSERVED=YES
+T049_STATUS=PASS
+T050_STATUS=PASS
+T051_STATUS=PASS
+T052_STATUS=PASS
+T053_STATUS=PASS
+T054_STATUS=PASS
+T055_STATUS=PASS
+
+FULL_UNIT=PASS
+FULL_INTEGRATION=PASS
+FULL_CONTRACT=PASS
+TYPECHECK=PASS
+FULL_LINT=PASS
+BUILD=PASS
+FULL_TEST=PASS
+
+HOST_CONTEXT_IMPLEMENTED=YES
+TRANSIENT_CONTEXT_ISOLATION_PASS=YES
+PAGE_CONTEXT_NORMALIZATION_PASS=YES
+
+DATA_ADAPTER_CONTRACT_IMPLEMENTED=YES
+TRUSTED_REGISTRATION_REGISTRY_PASS=YES
+MULTI_CUSTOMER_ISOLATION_PASS=YES
+
+STRUCTURED_OPERATION_ARGS_PASS=YES
+CANONICAL_OPERATION_FROM_TOOL_DEFINITION_PASS=YES
+
+TOOL_DEFINITION_RESULT_POLICY_PASS=YES
+MOCK_TOOL_POLICY_PROVISIONED=YES
+RESULT_POLICY_SINGLE_AUTHORITY=ToolDefinition.outputSchema
+
+SERVER_OWNED_PROJECTION_PASS=YES
+RAW_RESULT_NEGATIVE_SURFACE_PASS=YES
+
+MOCK_GENERIC_REGISTRY_PATH_PASS=YES
+DIRECT_MOCK_INJECTION_REMOVED=YES
+DIRECT_MOCK_INJECTION_REMOVED_SCOPE=READONLY_ASSISTANT_RUNTIME
+READONLY_ASSISTANT_DIRECT_MOCK_USAGE=NO
+
+SIDE_EFFECT_APPROVAL_DIRECT_MOCK_PATH_PRESENT=YES
+SIDE_EFFECT_APPROVAL_PATH_MIGRATED_BY_FEATURE008=NO
+OBSERVABILITY_MOCK_HEALTH_PROBE_BASELINE=APPROVED_NON_RUNTIME
+
+TOOLCALL_LIFECYCLE_PASS=YES
+GROUNDED_ANSWER_INPUT_BOUNDARY_PASS=YES
+
+PUBLIC_API_CONTRACT_PASS=YES
+SSE_CONTRACT_PASS=YES
+ANSWER_DECISION_CONTRACT_PASS=YES
+
+NO_NATIVE_CREDENTIAL_CENTRAL_PASS=YES
+NO_CONNECTOR_CONTEXT_REF_PERSISTENCE_PASS=YES
+
+TRUSTED_TOOL_TIMEOUT_PASS=YES
+TIMEOUT_SINGLE_AUTHORITY=ToolDefinition.timeoutMs
+
+REMOTE_JWKS_TEST_HARNESS_TIMEOUT_ONLY=YES
+REMOTE_JWKS_TIMEOUT_MS=30000
+REMOTE_JWKS_ASSERTIONS_REMOVED=NO
+REMOTE_JWKS_NEW_SKIPS=NO
+GATEWAY_PRODUCTION_BEHAVIOR_CHANGED=NO
+
+PRISMA_SCHEMA_MODIFIED=NO
+PRISMA_MIGRATION_CREATED=NO
+PRISMA_SCHEMA_CHANGE_REQUIRED=NO
+
+FEATURE002_MODIFIED_OR_ACTIVATED=NO
+REAL_SHINMONE_DATA_USED=NO
+FEATURE009_IMPLEMENTED=NO
+
+OUT_OF_SCOPE_LINT_MAINTENANCE_PRESENT=YES
+OUT_OF_SCOPE_LINT_MAINTENANCE_APPROVED_SEPARATELY=YES
+FEATURE008_SCOPE_VIOLATION_FROM_MAINTENANCE=NO
+
+FEATURE008_SECURITY_CLOSEOUT=PASS
+FEATURE008_PUBLIC_COMPATIBILITY=PASS
+FEATURE008_IMPLEMENTATION_READY_FOR_ACCEPTANCE=YES
+FEATURE008_IMPLEMENTATION_STATUS=PASS
+
+T013_REQUIRED=NO
+T013_STATUS=NOT_REQUIRED
+```
 
 ## Dependencies and Story Traceability
 

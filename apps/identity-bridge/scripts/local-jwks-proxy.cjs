@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { createServer, request } = require('node:http');
+const { createServer, request } = module.require('node:http');
 
 const HOST = '127.0.0.1';
 const PORT = 3110;

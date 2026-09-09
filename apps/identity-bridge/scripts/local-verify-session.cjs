@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-const { randomUUID } = require('node:crypto');
-const { readFileSync } = require('node:fs');
-const { join, resolve } = require('node:path');
-const { spawnSync } = require('node:child_process');
-const { readHiddenToken } = require('./local-verify-idx.cjs');
+const { randomUUID } = module.require('node:crypto');
+const { readFileSync } = module.require('node:fs');
+const { join, resolve } = module.require('node:path');
+const { spawnSync } = module.require('node:child_process');
+const { readHiddenToken } = module.require('./local-verify-idx.cjs');
 
 const BRIDGE_EXCHANGE_URL = 'http://127.0.0.1:3107/identity/exchange';
 const GATEWAY_SESSION_URL = 'http://127.0.0.1:4000/api/v1/assistant/sessions';

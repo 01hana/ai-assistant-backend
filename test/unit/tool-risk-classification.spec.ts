@@ -3,27 +3,15 @@ import { RuleBasedQueryUnderstandingPipeline } from '../../src/query-understandi
 
 describe('US2 tool risk classification and selection', () => {
   const service = new RuleBasedQueryUnderstandingPipeline();
-  const identityContext = {
+  const hostIntegrationContext = {
     requestId: 'req-us2-tools',
-    customer: {
-      customerId: 'customer-a',
-      integrationId: 'integration-erp'
-    },
-    organization: {
-      organizationId: 'org-001'
-    },
-    actor: {
-      actorId: 'actor-001',
-      roles: ['planner'],
-      permissionScopes: ['orders:read', 'inventory:read']
-    },
-    hostApp: {
-      hostApp: 'erp'
-    },
-    auth: {
-      tokenId: 'jwt-tool-risk',
-      gatewayIssuer: 'https://gateway.test.internal'
-    }
+    customerId: 'customer-a',
+    integrationId: 'integration-erp',
+    organizationId: 'org-001',
+    actorId: 'actor-001',
+    roles: ['planner'] as const,
+    permissionScopes: ['orders:read', 'inventory:read'] as const,
+    hostApp: 'erp'
   };
 
   it('classifies read-only live business data lookup as low risk and selects a connector-style tool candidate', async () => {
@@ -32,7 +20,7 @@ describe('US2 tool risk classification and selection', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '請查 SO-10001 訂單狀態',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.riskLevel).toBe(RiskLevel.low);
@@ -50,7 +38,7 @@ describe('US2 tool risk classification and selection', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '請取消 SO-10001 訂單',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.riskLevel).toBe(RiskLevel.high);

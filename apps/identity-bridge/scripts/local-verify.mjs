@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import process from 'node:process';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const bridgeRoot = resolve(scriptDirectory, '..');
@@ -70,7 +71,7 @@ function assertPublicJwks(document) {
 }
 
 async function json(url) {
-  const response = await fetch(url);
+  const response = await globalThis.fetch(url);
   if (!response.ok) fail(`${url} returned ${response.status}`);
   return response.json();
 }
@@ -78,7 +79,7 @@ async function json(url) {
 async function waitForReady(url) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try { const body = await json(url); if (body.status === 'ready') return; } catch { /* retry while container restarts */ }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 1000));
   }
   fail('Identity Bridge did not become ready after restart');
 }

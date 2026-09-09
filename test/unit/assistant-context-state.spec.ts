@@ -3,27 +3,15 @@ import { RuleBasedQueryUnderstandingPipeline } from '../../src/query-understandi
 
 describe('assistant context state and page context parsing', () => {
   const service = new RuleBasedQueryUnderstandingPipeline();
-  const identityContext = {
+  const hostIntegrationContext = {
     requestId: 'req-assistant-context',
-    customer: {
-      customerId: 'customer-a',
-      integrationId: 'integration-erp'
-    },
-    organization: {
-      organizationId: 'org-001'
-    },
-    actor: {
-      actorId: 'actor-001',
-      roles: ['planner'],
-      permissionScopes: ['orders:read']
-    },
-    hostApp: {
-      hostApp: 'erp'
-    },
-    auth: {
-      tokenId: 'jwt-assistant-context',
-      gatewayIssuer: 'https://gateway.test.internal'
-    }
+    customerId: 'customer-a',
+    integrationId: 'integration-erp',
+    organizationId: 'org-001',
+    actorId: 'actor-001',
+    roles: ['planner'] as const,
+    permissionScopes: ['orders:read'] as const,
+    hostApp: 'erp'
   };
 
   it('keeps the expected assistant context state shape for follow-up turns and clarification flows', () => {
@@ -81,7 +69,7 @@ describe('assistant context state and page context parsing', () => {
       sessionId: 'session-001',
       messageId: 'message-001',
       text: '這張訂單目前狀態？',
-      identityContext,
+      hostIntegrationContext,
       pageContext: {
         module: 'orders',
         screenId: 'order-detail',
@@ -109,7 +97,7 @@ describe('assistant context state and page context parsing', () => {
       sessionId: 'session-001',
       messageId: 'message-002',
       text: '這張訂單目前狀態？',
-      identityContext
+      hostIntegrationContext
     });
 
     expect(result.confidence).toBeLessThan(0.7);
