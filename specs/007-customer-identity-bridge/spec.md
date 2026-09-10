@@ -25,6 +25,8 @@ Customer Nuxt SPA
 
 Customer Auth owns authentication, authorized-Entry discovery, Entry selection, and Entry state. Identity Bridge begins only after that flow and receives the already-current native AccessToken; it neither calls Authentication or Entry-discovery endpoints nor accepts browser Entry authority.
 
+Feature 009 introduces one accepted, narrow compatibility amendment to the native-credential destination boundary. Stage 1 remains the mandatory validity step: the Bridge sends the exact bearer only to the configured protected MenuDetail endpoint and completes the existing identity admission checks. Stage 2 is permitted only after that success: the Bridge may hand the same bearer once to the exact deployment-owned, authenticated Customer-local Connector Runtime binding endpoint. No other connector, business-operation route, Customer, HostApp, endpoint, credential destination, retry, or fallback is permitted. This Customer-local handoff changes no identity, organization, Entry, permission, Customer, HostApp, canonical JWT, signing, JWKS, or central trust authority.
+
 The following restriction applies only to IDX-derived identity, authorization, credential, and signing material. The canonical upstream JWT may cross from the Customer environment to central Assistant services. Native IDX AccessToken, RefreshToken, raw native claims, raw MenuDetail responses, and Customer-local private signing material must remain in the Customer environment. Normal non-identity Assistant application request and response traffic remains governed by existing product contracts and is outside this identity-material egress restriction; this feature establishes no new chat or business-payload authority.
 
 Feature 007 defines one reusable bridge for configuration-driven Customer deployments. It does not create a generic IAM product, Customer-specific central Gateway path, Customer account store, or Customer-specific source branch.
@@ -155,7 +157,7 @@ An operator can configure another Customer deployment without a Customer-specifi
 
 - **FR-001**: The system MUST provide one independently deployable, Customer-local Identity Bridge owned by the Assistant product; it MUST be separately configured and trusted from the central Gateway.
 - **FR-002**: The Bridge MUST accept only the current IDX AccessToken as native exchange input. It MUST NOT receive, store, refresh, or manage an IDX RefreshToken.
-- **FR-003**: The Bridge MUST forward the native bearer at most once and only to its configured protected IDX MenuDetail endpoint. Native credentials MUST NOT enter central Gateway, Feature 004, Assistant Backend, business connectors, a Permission Source, or browser-selected destinations.
+- **FR-003**: Native bearer routing MUST follow exactly two ordered stages. Stage 1 MUST forward the exact bearer once only to the configured protected IDX MenuDetail endpoint. Stage 2 MAY forward the same bearer at most once only after successful MenuDetail acceptance and `IdentityAdmissionService` admission, and only to the exact deployment-owned Customer-local Connector Runtime binding endpoint using dedicated authenticated server-to-server transport bound to the configured Customer, integration, HostApp, connector instance, and context. Stage 2 MUST NOT retry, fall back, target another connector or route, or accept any Browser-selected destination or binding context. The Connector Runtime MUST retain the bearer only in protected volatile binding state bounded by the approved Feature 009 TTL and MUST revoke that binding when the native credential is rejected. RefreshToken handoff is forbidden. Native credentials MUST NOT enter central Gateway, Feature 004, Assistant Backend, central DataAdapter, central connector deployment configuration, a Permission Source, `connectorContextRef`, ToolCall, EvidenceRef, GroundedAnswerInput, model input, SSE, logs, audit, telemetry, or any other destination.
 - **FR-004**: The Bridge MUST establish IDX credential validity only after the configured protected MenuDetail endpoint accepts the exact bearer and yields a strict successful response. Native JWT decoding alone MUST establish no authority.
 - **FR-005**: The Bridge MUST require nonblank `sub`, `UUID_User`, `UUID_Company`, and `UUID_Entry` after accepted verification; `UUID_User` MUST equal `sub`.
 - **FR-006**: The Bridge MUST accept `UUID_Company` only when accepted IDX behavior provides one authoritative deterministic organization value. Multi-value or ambiguous organization input MUST fail closed until a documented pre-UAT rule is approved.
@@ -166,7 +168,7 @@ An operator can configure another Customer deployment without a Customer-specifi
 - **FR-011**: Customer authority MUST remain exclusively `IntegrationBinding.integrationId -> customerId`; the Bridge credential MUST contain no Customer authority and must not override Feature 004 `allowedHostApp` admission.
 - **FR-012**: Bridge-issued credentials MUST use short-lived RS256 asymmetric signing, nonblank `kid`, configured issuer, exact audience, and Customer-local private signing material. Private material MUST not be browser-held, persisted in an application database, returned, logged, audited, or telemetered.
 - **FR-013**: The Bridge MUST publish public verification material and support publish-before-use, active, retirement, and fail-closed unknown/retired-key behavior without sharing central Gateway internal signing authority.
-- **FR-014**: The Bridge MUST expose only a minimal exchange, public verification-key, and operational-health surface. A successful exchange MUST return the short-lived canonical upstream JWT and MAY additionally return only minimal safe token-lifecycle metadata required by the eventual client contract; exact JSON field names remain a design decision. It MUST NOT return native IDX AccessToken, RefreshToken, raw IDX claims, raw MenuDetail, signing material, or Customer authority.
+- **FR-014**: The Bridge MUST expose only a minimal exchange, public verification-key, and operational-health surface. A successful exchange MUST return the short-lived canonical upstream JWT and MAY additionally return only minimal safe token-lifecycle metadata or the opaque credential-free Feature 009 `connectorContextRef` and its lifetime required by the Customer-local client contract. It MUST NOT return native IDX AccessToken, RefreshToken, raw IDX claims, raw MenuDetail, signing material, or Customer authority.
 - **FR-015**: Customer-specific endpoint, allowed-entry set, `integration_id`, `host_app`, issuer, audience, signing-key reference, verification source, and safe transport settings MUST be deployment-controlled. No Customer domain, identifier, credential, secret, or menu may be source-coded.
 - **FR-016**: The Customer SPA integration MUST obtain its current native AccessToken through the existing frontend-auth layer, send it only to the Customer-local Bridge, use only the returned canonical JWT with the existing central Assistant session route, and open chat with the returned `sessionId`.
 - **FR-017**: Feature 007 MUST use existing central Feature 004 TrustProfile, IntegrationBinding, internal JWT, and Backend CustomerScope behavior without changing their authority semantics, verification behavior, or session route.
@@ -179,19 +181,19 @@ An operator can configure another Customer deployment without a Customer-specifi
 - **SR-001**: Native IDX AccessToken, RefreshToken, raw claims, and raw MenuDetail MUST remain absent from central Assistant paths, persistence, logs, audit payloads, telemetry, snapshots, and public errors.
 - **SR-002**: The Bridge MUST not use local IDX ES512 verification, guessed IDX keys/JWKS, browser identity attestation, browser-selected authority, username/password login, or RefreshToken processing.
 - **SR-003**: The Bridge MUST fail closed for malformed credential, endpoint rejection, unavailable or malformed MenuDetail, invalid identity, ambiguous organization, Entry mismatch, signing failure, key mismatch, and central trust or binding failure.
-- **SR-004**: The Bridge MUST retain production-safe endpoint controls appropriate to a protected native-token destination, including HTTPS, destination validation, redirect denial, bounded response handling, bounded deadline, and no uncontrolled retry.
+- **SR-004**: The Bridge MUST retain production-safe endpoint controls for both permitted native-token destinations. MenuDetail remains the fixed Stage 1 validity endpoint. The Feature 009 binding route is the sole permitted Stage 2 destination and MUST be exact, deployment-owned, Customer-local, HTTPS, authenticated with a dedicated service proof, bounded, redirect-free, and attempted without retry or fallback. Browser input MUST select neither destination nor any Customer, integration, HostApp, connector instance, operation, credential destination, or binding context.
 
 ### Explicit Non-Goals
 
 - IDX login/logout, Authentication calls, authorized-Entry discovery/selection/state, IDX Auth Backend changes, IDX infrastructure changes, or RefreshToken lifecycle changes.
-- Customer application, SCM, or business Backend changes; Customer account storage; business connectors; RAG; agent behavior; or business tools.
+- Customer application, SCM, or business Backend changes; Customer account storage; business-connector execution, RAG, agent behavior, or business tools. The sole exception is the accepted Feature 009 post-admission handoff to the exact Customer-local Connector Runtime binding route; it grants no business-operation or connector authority to Feature 007.
 - Generic IAM, identity-broker, OAuth/OIDC provider, or Customer lifecycle/admin/billing platform.
 - Browser/SDK private-key handling, browser JWT signing, Customer-specific central Gateway handlers, or new IDX-specific central session endpoints.
 - Feature 002, 003, 004, 005, or 006 redesigns or production-behavior changes.
 
 ### Key Entities
 
-- **Customer-side Identity Bridge**: The Assistant-owned runtime deployed in a Customer environment that verifies the current IDX AccessToken and issues only a canonical upstream JWT.
+- **Customer-side Identity Bridge**: The Assistant-owned runtime deployed in a Customer environment that verifies the current IDX AccessToken, retains identity/admission ownership, issues the canonical upstream JWT, and may perform only the accepted post-admission Feature 009 Customer-local binding handoff.
 - **Bridge Deployment Configuration**: Customer-specific operational values such as protected endpoint, nonempty allowed-entry set, canonical integration/HostApp, signing reference, issuer, audience, and public verification source.
 - **Accepted IDX Identity**: The reduced identity produced after successful MenuDetail verification: accepted `sub`, organization, and `idx_entry` admission anchor.
 - **Canonical Upstream Credential**: The short-lived Bridge-signed Feature 004-compatible JWT containing six canonical identity semantics and no Customer authority.
@@ -202,11 +204,11 @@ An operator can configure another Customer deployment without a Customer-specifi
 
 ### Measurable Outcomes
 
-- **SC-001 — IDENTITY_BRIDGE_RUNTIME_READY**: 100% of Bridge runtime checks show that native bearer input is accepted only for local exchange and no native credential reaches central Assistant services.
+- **SC-001 — IDENTITY_BRIDGE_RUNTIME_READY**: 100% of Bridge runtime checks enforce Stage 1 MenuDetail validation before any optional Stage 2 binding handoff, allow only the exact authenticated Customer-local binding destination after admission, and prove that no native credential reaches central Assistant services or any third destination.
 - **SC-002 — IDX_BRIDGE_VERIFICATION_READY**: 100% of IDX verification tests require protected MenuDetail acceptance before identity parsing, reject invalid identity/Entry cases, and derive only deterministic approved menu scopes.
 - **SC-003 — BRIDGE_CANONICAL_JWT_READY**: 100% of issued-credential checks contain only the six Feature 004 canonical semantics, with deployment-owned integration/HostApp, empty roles, one accepted organization, and no Customer authority.
 - **SC-004 — BRIDGE_JWKS_TRUST_READY**: 100% of valid Bridge credentials are accepted through a registered Feature 004 TrustProfile, while incorrect issuer, audience, signature, unknown key, and retired key cases fail closed.
-- **SC-005 — CUSTOMER_SPA_BRIDGE_HANDOFF_READY**: 100% of SPA handoff checks send a current IDX AccessToken only to the Customer-local Bridge, use only the returned canonical JWT centrally, and exclude RefreshToken from Bridge traffic.
+- **SC-005 — CUSTOMER_SPA_BRIDGE_HANDOFF_READY**: 100% of SPA handoff checks send a current IDX AccessToken only to the Customer-local Bridge, use only the returned canonical JWT and credential-free opaque reference centrally, exclude RefreshToken from Bridge and Connector Runtime traffic, and give the Browser no Connector Runtime destination authority.
 - **SC-006 — CUSTOMER_SESSION_BOOTSTRAP_READY**: 100% of session-bootstrap tests with the required existing Feature 004 staging provisioning resolve Customer and HostApp only through IntegrationBinding and return a valid `sessionId` from the existing session route.
 - **SC-007 — CUSTOMER_IDENTITY_SESSION_INTEGRATION_READY**: A real first-Customer staging UAT, after the required existing Feature 004 staging provisioning is enabled and ready, demonstrates existing IDX login through chat-window opening, including a real `sessionId` and evidence that neither native IDX credentials nor raw MenuDetail crossed into central Assistant services.
 
@@ -245,4 +247,8 @@ FEATURE006_SEMANTIC_CHANGE_REQUIRED=NO
 REAL_CUSTOMER_STAGING_REQUIRED_FOR_FINAL_GATE=YES
 SESSION_ID_REQUIRED_FOR_FINAL_GATE=YES
 CHAT_WINDOW_OPEN_REQUIRED_FOR_FINAL_GATE=YES
+FEATURE007_NATIVE_CREDENTIAL_BOUNDARY_AMENDED=YES
+MENUDDETAIL_REMAINS_VALIDITY_AUTHORITY=YES
+CUSTOMER_LOCAL_CONNECTOR_HANDOFF_ALLOWED=YES
+CENTRAL_NATIVE_CREDENTIAL_ALLOWED=NO
 ```

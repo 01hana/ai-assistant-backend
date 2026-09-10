@@ -1,7 +1,7 @@
 # Feature 007 Design: Customer-side Identity Bridge & First Customer Session Bootstrap
 
 **Status**: Design only
-**Scope**: Define the independently deployable Customer-side Identity Bridge. This document creates no production code, does not change Features 002–006, and does not modify Customer IDX/Auth, application, SCM, or business systems.
+**Scope**: Define the independently deployable Customer-side Identity Bridge, including the accepted Feature 009 post-admission native-credential boundary amendment. This document creates no production code, does not change Features 002–006, and does not modify Customer IDX/Auth, application, SCM, or business systems.
 
 ## 1. Repository Placement and Trust Topology
 
@@ -14,7 +14,7 @@ The future Bridge application follows that package/build convention, but is a se
 | Concern | Central Assistant | Customer environment |
 | --- | --- | --- |
 | Runtime | `apps/gateway` and internal Assistant Backend | `apps/identity-bridge` and Customer SPA |
-| Native IDX credential | Never received | SPA sends current AccessToken only to Bridge |
+| Native IDX credential | Never received | SPA sends the current AccessToken only to Bridge; after successful MenuDetail acceptance and identity admission, Bridge may hand the same token only to the exact authenticated Customer-local Connector Runtime binding route |
 | MenuDetail | Never received raw | Protected endpoint called by Bridge |
 | Signing domain | Gateway internal and managed signing only | Bridge upstream signing only |
 | Private key | Central Gateway private material | Customer-local Bridge secret mount |
@@ -30,12 +30,22 @@ Normal Assistant request and response traffic remains under existing product con
 
 ```text
 Customer SPA --current IDX AccessToken--> Customer-local Bridge
-Customer-local Bridge --one bearer request--> Customer IDX MenuDetail
+Customer-local Bridge --Stage 1 exact bearer validation request--> Customer IDX MenuDetail
+Customer IDX MenuDetail --accepted response--> Customer-local Bridge identity admission
+Customer-local Bridge --Stage 2 dedicated signed local handoff of same bearer--> exact Customer-local Connector Runtime binding route
 Customer-local Bridge --canonical upstream JWT--> central Gateway Feature 004
 central Gateway --internal JWT--> Assistant Backend
 ```
 
-### 1.3 Central-reachable public JWKS topology
+### 1.3 Accepted Feature 009 credential-boundary amendment
+
+The Connector Runtime handoff is an allowed Customer-local credential destination change, not an identity-authority change. MenuDetail remains the sole native credential-validity authority, and the Bridge remains the owner of `sub`/`UUID_User` consistency, `UUID_Company`, `UUID_Entry` admission, and MenuDetail permission projection.
+
+The Bridge may attempt Stage 2 only after the exact bearer succeeds at MenuDetail and `IdentityAdmissionService` completes. The destination is one exact deployment-owned Customer-local binding URI. A dedicated server-to-server proof binds the request to deployment-configured Customer, integration, HostApp, connector instance, and context. Those values constrain the local handoff only: they do not establish central Customer or HostApp authority, which remain `IntegrationBinding` and `allowedHostApp` responsibilities.
+
+The Browser cannot select the endpoint, connector, Customer, HostApp, operation, credential destination, or binding context. The Bridge makes at most one Stage 2 attempt and never retries or falls back with the bearer. The Connector Runtime retains it only in the protected volatile Feature 009 binding, bounded by the approved binding TTL. A Customer API credential rejection revokes that binding. RefreshToken is never handed off. The native bearer remains prohibited from central Gateway, Assistant Backend, DataAdapter, central deployment configuration, `connectorContextRef`, ToolCall, EvidenceRef, GroundedAnswerInput, model/SSE, logs, audit, and telemetry.
+
+### 1.4 Central-reachable public JWKS topology
 
 The identity exchange remains Customer-local, but the Bridge's public verification material must be reachable by central Gateway through a Feature-004-compatible public HTTPS JWKS URI. Central Gateway does not require access to a private Customer network and does not call the Bridge exchange endpoint.
 
@@ -76,6 +86,8 @@ Successful response shape:
 }
 ```
 
+For a Feature 009 connector-enabled Customer deployment, the same response may add `connectorContextRef` and `connectorContextExpiresIn`. They contain only the opaque credential-free local binding reference and bounded lifetime. The response never returns the native token, and legacy identity consumers may ignore the additive fields.
+
 The canonical upstream JWT is intentionally returned only to the Customer SPA and then sent as the authentication credential to the registered central Gateway. It is sensitive bearer credential material: it is not logged as raw material, written to audit payloads, included in telemetry or tracing attributes, persisted by the Bridge, exposed in errors, health/readiness responses, diagnostics, or snapshots, or stored in browser localStorage or sessionStorage. The response otherwise contains no native IDX AccessToken, RefreshToken, raw native claims, raw MenuDetail, signing material, Customer authority, or configuration detail.
 
 | Condition | HTTP status | Safe code |
@@ -111,7 +123,9 @@ Customer Auth completes authentication, authorized-Entry discovery, Entry select
 4. Only then structurally parse the same native JWT payload; no local IDX signature, ES512, JWKS, key-selection, or time-claim verification is performed.
 5. Require nonblank `sub`, `UUID_User`, `UUID_Company`, and `UUID_Entry`; require `sub === UUID_User`.
 6. Require one authoritative `UUID_Company` value, exact case-sensitive `UUID_Entry` membership in the deployment-controlled allowed-entry set, and validated semantic menu material.
-7. Project canonical scopes and issue the Bridge JWT.
+7. Project canonical scopes.
+8. When the accepted Feature 009 binding integration is enabled, send the same native bearer at most once to the exact authenticated Customer-local Connector Runtime binding endpoint and obtain only the opaque reference and its bounded lifetime.
+9. Issue the unchanged Bridge JWT and, for the connector-enabled integration, return the credential-free reference fields with it.
 
 `UUID_Company` provided as an array, or any case where authoritative IDX behavior does not establish exactly one organization, fails closed. The Bridge does not choose an array value, accept a browser-selected company, or infer organization from Entry. The first Customer staging readiness checklist must include documentary/test evidence that the accepted production IDX behavior supplies one deterministic organization before UAT can begin.
 
@@ -144,7 +158,7 @@ The Bridge fixes the MenuDetail endpoint in deployment configuration. The browse
 - `public_only`: every resolved and connected address must be publicly routable.
 - `allowlisted_networks`: every resolved and connected address must belong to one configured Customer CIDR allowlist; public addresses are not accepted in this mode.
 
-Both modes require HTTPS, no URI credentials/fragments, one `GET` request with `Authorization: Bearer <native token>`, connection-time DNS rebinding validation, redirect denial, JSON-only response, the stated bounds, and no retry. A failed policy check occurs before token forwarding.
+Both modes require HTTPS, no URI credentials/fragments, one Stage 1 `GET` request with `Authorization: Bearer <native token>`, connection-time DNS rebinding validation, redirect denial, JSON-only response, the stated bounds, and no retry. A failed policy check occurs before token forwarding. This policy governs MenuDetail only; the sole additional native-token destination is the separately configured Feature 009 Stage 2 binding route described in section 1.3, with its own exact destination validation and dedicated service proof.
 
 ## 4. Canonical JWT and Signing Domain
 
@@ -254,6 +268,7 @@ This creates no new central admin endpoint, Customer-resolution mechanism, Custo
 | Signing/JWKS | Canonical claims, five-minute expiry, issuer/audience, local JWKS generation, central-reachable public HTTPS JWKS, active/published/retiring lifecycle, 1,500-second key-retirement overlap, and unknown-key denial |
 | Credential redaction | Canonical JWT is returned to the SPA and accepted by the central Gateway, but absent from Bridge logs, audit payloads, telemetry/traces, error bodies, persistence, diagnostics, and snapshots; it remains memory-only in the SPA |
 | Native-material non-egress | Native AccessToken, RefreshToken, raw claims, and raw MenuDetail absent from central requests, logs, audit, telemetry, persistence, snapshots, and errors |
+| Feature 009 local handoff | No handoff before MenuDetail acceptance/admission; one exact authenticated binding destination; proof context is deployment-owned; no retry/fallback/third destination; native token remains volatile and absent from the reference and all central/prohibited surfaces; native rejection revokes the binding |
 | Feature 004 compatibility | Bridge JWT is accepted by exactly one existing profile then resolved only through IntegrationBinding |
 | Two-configuration isolation | Distinct endpoint/allowed-entry-set/integration/HostApp/key configurations cannot cross-admit |
 | SPA handoff | Existing Frontend-Auth supplies AccessToken only locally; JWT is memory-only; `sessionId` opens chat |
@@ -308,4 +323,10 @@ FEATURE003_MODIFICATION_REQUIRED=NO
 FEATURE004_MODIFICATION_REQUIRED=NO
 FEATURE005_MODIFICATION_REQUIRED=NO
 FEATURE006_PRODUCTION_MODIFICATION_REQUIRED=NO
+FEATURE007_NATIVE_CREDENTIAL_BOUNDARY_AMENDED=YES
+MENUDDETAIL_REMAINS_VALIDITY_AUTHORITY=YES
+CUSTOMER_LOCAL_CONNECTOR_HANDOFF_ALLOWED=YES
+CENTRAL_NATIVE_CREDENTIAL_ALLOWED=NO
+IDENTITY_AUTHORITY_CHANGED=NO
+NATIVE_CREDENTIAL_ALLOWED_DESTINATION_CHANGED=YES
 ```
