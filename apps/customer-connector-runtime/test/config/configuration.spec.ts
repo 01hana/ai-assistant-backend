@@ -1,0 +1,80 @@
+import { parseConnectorRuntimeConfiguration } from '../../src/config/runtime-configuration';
+import { validRuntimeEnvironment } from '../fixtures/runtime-environment';
+
+describe('Customer Connector Runtime immutable configuration', () => {
+  it('parses exact multi-profile public trust configuration once and deeply freezes it', () => {
+    const result = parseConnectorRuntimeConfiguration(validRuntimeEnvironment());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.processRole).toBe('single-replica');
+    expect(result.config.replayCacheMaxEntries).toBe(64);
+    expect(result.config.contexts).toHaveLength(2);
+    expect(result.config.centralProfiles).toHaveLength(1);
+    expect(result.config.bootstrapProfiles).toHaveLength(2);
+    expect(Object.isFrozen(result.config)).toBe(true);
+    expect(Object.isFrozen(result.config.bootstrapProfiles[0]?.keys[0]?.publicJwk)).toBe(true);
+  });
+
+  it.each([
+    'CONNECTOR_RUNTIME_CONTEXT_JSON',
+    'CONNECTOR_CENTRAL_TRUST_KEYS_JSON',
+    'CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON',
+    'CONNECTOR_REPLAY_CACHE_MAX_ENTRIES',
+    'CONNECTOR_RUNTIME_PROCESS_ROLE'
+  ])('fails closed without required %s', (name) => {
+    const environment = validRuntimeEnvironment();
+    delete environment[name];
+    expect(parseConnectorRuntimeConfiguration(environment)).toEqual({ ok: false, category: 'invalid_configuration' });
+  });
+
+  it('rejects a key domain shared by central invocation and Bridge bootstrap profiles', () => {
+    const environment = validRuntimeEnvironment();
+    const central = JSON.parse(String(environment.CONNECTOR_CENTRAL_TRUST_KEYS_JSON)) as Array<Record<string, unknown>>;
+    const bootstrap = JSON.parse(String(environment.CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON)) as Array<Record<string, unknown>>;
+    bootstrap[0] = { ...bootstrap[0], keyDomain: central[0]?.keyDomain };
+
+    expect(parseConnectorRuntimeConfiguration({
+      ...environment,
+      CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON: JSON.stringify(bootstrap)
+    })).toEqual({ ok: false, category: 'invalid_configuration' });
+  });
+
+  it('rejects RSA public verification-key material reused across central and bootstrap profiles', () => {
+    const environment = validRuntimeEnvironment();
+    const central = JSON.parse(String(environment.CONNECTOR_CENTRAL_TRUST_KEYS_JSON)) as Array<Record<string, unknown>>;
+    const bootstrap = JSON.parse(String(environment.CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON)) as Array<Record<string, unknown>>;
+    const centralKeys = central[0]?.keys as Array<Record<string, unknown>>;
+    const bootstrapKeys = bootstrap[0]?.keys as Array<Record<string, unknown>>;
+    const centralJwk = centralKeys[0]?.publicJwk as Record<string, unknown>;
+    const bootstrapJwk = bootstrapKeys[0]?.publicJwk as Record<string, unknown>;
+    bootstrapKeys[0] = {
+      ...bootstrapKeys[0],
+      publicJwk: { ...bootstrapJwk, n: centralJwk.n, e: centralJwk.e }
+    };
+
+    expect(parseConnectorRuntimeConfiguration({
+      ...environment,
+      CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON: JSON.stringify(bootstrap)
+    })).toEqual({ ok: false, category: 'invalid_configuration' });
+  });
+
+  it('rejects private key material, wildcard context, duplicate key domains, and out-of-range replay capacity', () => {
+    const base = validRuntimeEnvironment();
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_PRIVATE_KEY: 'secret' }).ok).toBe(false);
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_RUNTIME_CONTEXT_JSON: '[{"customerId":"*"}]' }).ok).toBe(false);
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_REPLAY_CACHE_MAX_ENTRIES: '100001' }).ok).toBe(false);
+
+    const bootstrap = JSON.parse(String(base.CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON)) as Array<Record<string, unknown>>;
+    bootstrap[1] = { ...bootstrap[1], keyDomain: bootstrap[0]?.keyDomain };
+    expect(parseConnectorRuntimeConfiguration({
+      ...base,
+      CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON: JSON.stringify(bootstrap)
+    }).ok).toBe(false);
+
+    const central = JSON.parse(String(base.CONNECTOR_CENTRAL_TRUST_KEYS_JSON)) as Array<Record<string, unknown>>;
+    const keys = central[0]?.keys as Array<Record<string, unknown>>;
+    keys[0] = { ...keys[0], publicJwk: { ...(keys[0]?.publicJwk as object), endpoint: 'forbidden' } };
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_CENTRAL_TRUST_KEYS_JSON: JSON.stringify(central) }).ok).toBe(false);
+  });
+});

@@ -1,0 +1,21 @@
+{
+  "name": "@internal-ai-assistant/customer-connector-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "node ../../node_modules/jest/bin/jest.js --config jest.config.cjs",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.test.json",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@internal-ai-assistant/connector-runtime-contract": "file:../../packages/connector-runtime-contract",
+    "@nestjs/common": "^11.1.26",
+    "@nestjs/core": "^11.1.26",
+    "@nestjs/platform-express": "^11.1.26",
+    "jose": "^5.10.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  }
+}
