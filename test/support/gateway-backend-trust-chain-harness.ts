@@ -2,10 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { ValidationPipe, type INestApplication, type LoggerService } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
 import type { Prisma } from '../../apps/gateway/src/generated/prisma/client';
 import { GatewayModule } from '../../apps/gateway/src/gateway.module';
 import { createGatewayPrismaClient } from '../../apps/gateway/src/integration-registry/gateway-prisma-client.factory';
 import { createEphemeralRsaFixture, type EphemeralRsaFixture } from '../../apps/gateway/test/signing/ephemeral-rsa.fixture';
+import { HardenedJwksTransport } from '../../apps/gateway/src/upstream-auth/jwks-transport.adapter';
 import { createGatewayRegistryDatabase, type GatewayRegistryDatabase } from './gateway-registry-db.helper';
 import { createGatewayUpstreamTestAuthority, type GatewayUpstreamTestAuthority } from './gateway-upstream-test-authority';
 
@@ -34,6 +36,11 @@ export type GatewayBackendTrustChainHarness = Readonly<{
 }>;
 
 export type RuntimeLogEntry = Readonly<{ level: string; values: readonly unknown[] }>;
+const LEGACY_UPSTREAM_AUTHORITY_ENVIRONMENT_KEYS = Object.freeze([
+  'GATEWAY_UPSTREAM_JWT_ISSUER',
+  'GATEWAY_UPSTREAM_JWT_AUDIENCE',
+  'GATEWAY_UPSTREAM_JWKS_URI'
+]);
 
 /** Shared Phase 8 real-runtime foundation; it owns no generic operation or identity API. */
 export async function createGatewayBackendTrustChainHarness(input: Readonly<{
@@ -53,11 +60,8 @@ export async function createGatewayBackendTrustChainHarness(input: Readonly<{
     databaseUrl: database.databaseUrl,
     signingKeyReference: signingFile.fileReference,
     gatewayOrigin,
-    backendOrigin,
-    upstreamIssuer: upstreamAuthority.issuer,
-    upstreamAudience: upstreamAuthority.audience,
-    upstreamJwksUri: upstreamAuthority.jwksUri
-  }));
+    backendOrigin
+  }), LEGACY_UPSTREAM_AUTHORITY_ENVIRONMENT_KEYS);
   let gateway: INestApplication | undefined;
   let backend: INestApplication | undefined;
   let backendStopped = false;
@@ -67,6 +71,7 @@ export async function createGatewayBackendTrustChainHarness(input: Readonly<{
 
   try {
     await provisionExplicitBindings(prisma, bindings);
+    await provisionAcceptedTrustProfiles(prisma, bindings, upstreamAuthority);
     await prisma.gatewaySigningKey.create({
       data: {
         kid: signingFixture.kid,
@@ -77,7 +82,7 @@ export async function createGatewayBackendTrustChainHarness(input: Readonly<{
       }
     });
     backend = await startBackend(backendPort, backendLogCapture.logger);
-    gateway = await startGateway(gatewayPort, gatewayLogCapture.logger);
+    gateway = await startGateway(gatewayPort, gatewayLogCapture.logger, upstreamAuthority.transport);
     gatewayLogCapture.clear();
     backendLogCapture.clear();
     return Object.freeze({
@@ -118,10 +123,40 @@ async function provisionExplicitBindings(prisma: ReturnType<typeof createGateway
   });
 }
 
-async function startGateway(port: number, logger: LoggerService): Promise<INestApplication> {
-  const app = await NestFactory.create(GatewayModule, { logger });
-  await app.listen(port, '127.0.0.1');
-  return app;
+async function provisionAcceptedTrustProfiles(
+  prisma: ReturnType<typeof createGatewayPrismaClient>,
+  bindings: readonly TrustChainBindingFixture[],
+  authority: GatewayUpstreamTestAuthority
+): Promise<void> {
+  await prisma.registeredUpstreamTrustProfile.createMany({
+    data: bindings.map((binding, index) => ({
+      id: `gateway-e2e-profile-${index + 1}`,
+      integrationId: binding.integrationId,
+      expectedIssuer: authority.issuer,
+      expectedAudience: authority.audience,
+      jwksUri: authority.jwksUri,
+      algorithm: 'RS256',
+      enabled: true,
+      lifecycle: 'active',
+      version: 1,
+      replacesProfileId: null
+    }))
+  });
+}
+
+async function startGateway(port: number, logger: LoggerService, transport: HardenedJwksTransport): Promise<INestApplication> {
+  const moduleRef = await Test.createTestingModule({ imports: [GatewayModule] })
+    .overrideProvider(HardenedJwksTransport)
+    .useValue(transport)
+    .compile();
+  const app = moduleRef.createNestApplication({ logger });
+  try {
+    await app.listen(port, '127.0.0.1');
+    return app;
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
 }
 
 async function startBackend(port: number, logger: LoggerService): Promise<INestApplication> {
@@ -178,9 +213,6 @@ function environmentFor(input: Readonly<{
   signingKeyReference: string;
   gatewayOrigin: string;
   backendOrigin: string;
-  upstreamIssuer: string;
-  upstreamAudience: string;
-  upstreamJwksUri: string;
 }>): Record<string, string> {
   return {
     NODE_ENV: 'test', DATABASE_URL: input.databaseUrl, POSTGRES_USER: 'assistant', POSTGRES_PASSWORD: 'assistant_test_password', POSTGRES_DB: 'assistant_test',
@@ -190,15 +222,16 @@ function environmentFor(input: Readonly<{
     ENABLE_RUNTIME_DEBUG: 'false', ENABLE_REDIS: 'false', ENABLE_SWAGGER_DOCS: 'false', SWAGGER_PATH: 'docs',
     GATEWAY_INTERNAL_JWT_ISSUER: input.gatewayOrigin, GATEWAY_INTERNAL_JWT_AUDIENCE: 'feature003-phase8-backend',
     GATEWAY_PUBLIC_JWKS_URL: `${input.gatewayOrigin}/.well-known/jwks.json`,
-    GATEWAY_UPSTREAM_JWT_ISSUER: input.upstreamIssuer, GATEWAY_UPSTREAM_JWT_AUDIENCE: input.upstreamAudience,
-    GATEWAY_UPSTREAM_JWKS_URI: input.upstreamJwksUri, GATEWAY_UPSTREAM_JWT_CLOCK_TOLERANCE_SECONDS: '0',
+    GATEWAY_UPSTREAM_JWT_CLOCK_TOLERANCE_SECONDS: '0',
     GATEWAY_INTERNAL_JWT_TTL_SECONDS: '300', GATEWAY_BACKEND_BASE_URL: input.backendOrigin,
     GATEWAY_SIGNING_KEY_REFERENCE: input.signingKeyReference, GATEWAY_ALLOWED_ORIGINS: 'http://localhost:3001', GATEWAY_PORT: '4000'
   };
 }
 
-function installEnvironment(values: Record<string, string>): () => void {
-  const previous = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
+function installEnvironment(values: Record<string, string>, absentKeys: readonly string[] = []): () => void {
+  const trackedKeys = [...new Set([...Object.keys(values), ...absentKeys])];
+  const previous = Object.fromEntries(trackedKeys.map((key) => [key, process.env[key]]));
+  for (const key of absentKeys) delete process.env[key];
   Object.assign(process.env, values);
   return () => {
     for (const [key, value] of Object.entries(previous)) {

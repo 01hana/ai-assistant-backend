@@ -1,7 +1,7 @@
 # Tasks: Feature 009 — Productized Business Connector Runtime
 
 **Input**: Accepted `spec.md`, `design.md`, and `plan.md` approved for Phase 1 implementation.
-**Status**: Accepted — Approved for Phase 1 implementation. `PHASE1_EXECUTED=NO`; all tasks remain unchecked.
+**Status**: Accepted — Phase 1 baseline and Phase 2 shared-contract gate completed. `PHASE1_EXECUTED=YES`; T001–T015 are complete and Phase 3 is unexecuted.
 **Scope**: Implement the reusable two-sided connector runtime, executable Synthetic Customer B portability fixture, removable Shinmone reference slice, and Shinmone-removal gate through the existing Feature 008 path. Feature 007 is a completed read-only predecessor; Phase 8 is `FEATURE009_IMPLEMENTATION_CONSUMING_ACCEPTED_FEATURE007_AMENDMENT`, never Feature 007 reimplementation.
 **Test rule**: Every meaningful new contract or behavior starts with an authentic RED against current code, followed by the narrow GREEN and the phase checkpoint. Never manufacture RED by breaking production code.
 
@@ -28,35 +28,195 @@
 **Dependencies**: None.  
 **Independent test**: Existing identity, transient-context, tool, projection, evidence, mock, public, and SSE suites pass without production or test edits.
 
-- [ ] T001 [VERIFY] [P] [IDENTITY-BRIDGE] Capture the current Feature 007 runtime baseline without rewriting its history.
+- [X] T001 [VERIFY] [P] [IDENTITY-BRIDGE] Capture the current Feature 007 runtime baseline without rewriting its history.
   - Files: `apps/identity-bridge/test/exchange/**`, `apps/identity-bridge/test/idx/**`, `apps/identity-bridge/test/signing/**`, `apps/identity-bridge/test/jwks/**`, `test/integration/gateway-integration-binding.persistence.spec.ts`, `test/e2e/gateway-backend-trust-chain.e2e-spec.ts`.
   - Depends on: none.
   - Validation: Run focused Bridge MenuDetail, admission, permission, canonical JWT/JWKS, redaction, and existing session bootstrap suites; record current pass/fail output only in this task's later evidence.
   - Stop: Do not edit Feature 007 source, tests, documents, task checkboxes, or historical evidence.
 
-- [ ] T002 [VERIFY] [P] [BACKEND] Capture Feature 008 trusted/transient/tool authority baselines.
+- [X] T002 [VERIFY] [P] [BACKEND] Capture Feature 008 trusted/transient/tool authority baselines.
   - Files: `test/unit/host-integration-request.factory.spec.ts`, `test/integration/feature008-transient-boundary.spec.ts`, `test/unit/data-adapter-registry.service.spec.ts`, `test/unit/tool-registry.service.spec.ts`, `test/unit/tool-permission-precheck.service.spec.ts`, `test/unit/tool-call.service.spec.ts`.
   - Depends on: none.
   - Validation: Run the listed suites and record HostIntegrationContext, transient reference, exact registry, ToolDefinition, arguments, permission, lifecycle, and timeout behavior.
   - Stop: Do not change fixtures or assertions to make the baseline pass.
 
-- [ ] T003 [VERIFY] [P] [BACKEND] Capture Feature 008 projection, evidence, mock, answer, and public compatibility baselines.
+- [X] T003 [VERIFY] [P] [BACKEND] Capture Feature 008 projection, evidence, mock, answer, and public compatibility baselines.
   - Files: `test/unit/adapter-result-projector.service.spec.ts`, `test/unit/evidence-ref.service.spec.ts`, `test/unit/grounded-answer-input.spec.ts`, `test/unit/mock-connector-adapter.spec.ts`, `test/integration/authorized-evidence-answer.spec.ts`, `test/integration/tool-failure-safe-response.spec.ts`, `test/contract/assistant-messages-sse.contract.spec.ts`.
   - Depends on: none.
   - Validation: Run the listed suites and record outputSchema projection, masking, EvidenceRef, GroundedAnswerInput, mock, no-answer/tool-failure, and SSE behavior.
   - Stop: No public response, AnswerDecision, SSE, evidence, or mock contract change is permitted.
 
-- [ ] T004 [VERIFY] [P] [BACKEND] Capture protected hashes, repository scope, and prohibited-data surface baseline.
+- [X] T004 [VERIFY] [P] [BACKEND] Capture protected hashes, repository scope, and prohibited-data surface baseline.
   - Files: Feature 009 `spec.md`, `design.md`, `plan.md`; Feature 007 `spec.md`, `design.md`, `plan.md`, `tasks.md`; `specs/.DS_Store`; `prisma/schema.prisma`; `prisma/migrations/`; `test/integration/secret-redaction.spec.ts`.
   - Depends on: none.
   - Validation: Record hashes/status and run existing redaction checks for native credential and `connectorContextRef`; preserve all pre-existing worktree state.
   - Stop: This task may update only later evidence in this Feature 009 `tasks.md`.
 
-- [ ] T005 [CHECKPOINT] [BACKEND] Verify and record the Phase 1 predecessor baseline gate.
+- [X] T005 [CHECKPOINT] [BACKEND] Verify and record the Phase 1 predecessor baseline gate.
   - Files: `specs/009-productized-business-connector-runtime/tasks.md` evidence only.
   - Depends on: T001, T002, T003, T004.
   - Validation: Confirm all baseline commands completed without mutation and record both `PREDECESSOR_CONTRACT_BASELINE_RESULT=PASS` and `PHASE1_EXECUTED=YES` when T005 completes. Until then, the document-level gate metadata remains `PHASE1_EXECUTED=NO`.
   - Stop: Do not proceed if Feature 007 history is rewritten or any Feature 008 authority differs from the accepted baseline.
+
+### Phase 1 Execution Evidence — 2026-09-10
+
+Phase 1 stopped at its checkpoint because T001 did not fully pass. No production code, test code, Feature 007 history, Feature 008 contract, Feature 009 approved input, Prisma artifact, hook, or Phase 2 task was modified.
+
+| Task | Result | Suites | Tests | Skipped | Evidence |
+| --- | --- | ---: | ---: | ---: | --- |
+| T001 | FAIL | 23 passed; Gateway e2e aborted before summary | 215 passed; Gateway e2e count not reported | 0 reported | Identity Bridge: 22/22 suites and 213/213 tests passed. IntegrationBinding persistence: the first sandboxed attempt failed only because localhost PostgreSQL access was denied; the identical authorized retry passed 1/1 suite and 2/2 tests. Gateway/Backend trust-chain e2e exited 1 during `NestFactory.create(GatewayModule)` via `process.exit(1)` before Jest emitted suite/test totals; the only additional output was the existing ts-jest `allowJs` warning. No code or fixture was changed. |
+| T002 | PASS | 6/6 | 76/76 | 0 | Five focused unit suites and the Feature 008 transient-boundary integration suite passed. |
+| T003 | PASS | 7/7 | 41/41 | 0 | Four projection/evidence/mock unit suites, two answer/failure integration suites, and the Assistant SSE contract suite passed. |
+| T004 | PASS | 1/1 | 5/5 | 0 | Secret-redaction integration passed; all protected hashes matched before and after. The failed e2e's task-created temporary signing directory and isolated `_test` database were removed by exact name after inspection. |
+| T005 | BLOCKED | — | — | — | T001 is incomplete, so `PREDECESSOR_CONTRACT_BASELINE_RESULT=PASS` and `PHASE1_EXECUTED=YES` were not recorded. |
+
+Commands executed, in order:
+
+```text
+git status --short
+shasum -a 256 <Feature 009 approved inputs and protected Feature 007/008, .DS_Store, and Prisma paths>
+rg <gate metadata and task checkbox checks>
+docker compose ps
+npm --prefix apps/identity-bridge run test:unit -- --testPathPatterns='test/(exchange|idx|signing|jwks)/'
+RUN_GATEWAY_REGISTRY_DB_TESTS=true npm run test:integration -- --runInBand --runTestsByPath test/integration/gateway-integration-binding.persistence.spec.ts
+RUN_GATEWAY_REGISTRY_DB_TESTS=true npm run test:integration -- --runInBand --runTestsByPath test/integration/gateway-integration-binding.persistence.spec.ts  # identical authorized retry
+npm run test:e2e -- --runInBand --runTestsByPath test/e2e/gateway-backend-trust-chain.e2e-spec.ts
+npm run test:unit -- --runInBand --runTestsByPath test/unit/host-integration-request.factory.spec.ts test/unit/data-adapter-registry.service.spec.ts test/unit/tool-registry.service.spec.ts test/unit/tool-permission-precheck.service.spec.ts test/unit/tool-call.service.spec.ts
+npm run test:integration -- --runInBand --runTestsByPath test/integration/feature008-transient-boundary.spec.ts
+npm run test:unit -- --runInBand --runTestsByPath test/unit/adapter-result-projector.service.spec.ts test/unit/evidence-ref.service.spec.ts test/unit/grounded-answer-input.spec.ts test/unit/mock-connector-adapter.spec.ts
+npm run test:integration -- --runInBand --runTestsByPath test/integration/authorized-evidence-answer.spec.ts test/integration/tool-failure-safe-response.spec.ts
+npm run test:contract -- --runInBand --runTestsByPath test/contract/assistant-messages-sse.contract.spec.ts
+npm run test:integration -- --runInBand --runTestsByPath test/integration/secret-redaction.spec.ts
+find/ls inspection of the task-created temporary signing directory
+rm -rf .phase5-signing-test-h08zB2
+docker compose exec -T postgres psql -U postgres -d postgres -Atc <list exact feature003 _test databases>
+docker compose exec -T postgres dropdb -U postgres --force feature003_gateway_backend_trust_ch_17511_1789019630860_0_test
+git status --short
+shasum -a 256 <same protected paths>
+```
+
+Approved Feature 009 pre-implementation hashes, unchanged after baseline execution:
+
+```text
+SPEC_SHA256=d73dfe52922e71f2d1481b8638fcd9cd3dadf83f5ecc1a399586cebc02a41b73
+DESIGN_SHA256=250659dc2e4bef3361953b07d99fd1a37278989a4f6a71644860abc0387801a8
+PLAN_SHA256=00fc5b55351f980deb063d07de555dc88213b5acf71b7e30855cade067f875c1
+TASKS_PRE_EXECUTION_SHA256=09f8adf59ecc6108c8fbf0208d77ce6fae93e8fb57991750a35ca8d4829226c9
+```
+
+Protected predecessor and persistence hashes, identical before and after baseline execution:
+
+```text
+FEATURE007_SPEC_SHA256=030f899f46d94d15b1357fb62de599e578a22cae5c388ddd35f57f194fa997cd
+FEATURE007_DESIGN_SHA256=22439db8e4d7154d24311e41ecdea05c22d55edca159076779024a89c33be369
+FEATURE007_PLAN_SHA256=cf3a2d5c36345eea6d61b7c26ce9cda20a4503cbc1a6b748a478fda3b0c9f9ea
+FEATURE007_TASKS_SHA256=eb6f7c4cded0e704fff9ef9e46dda7e4d6c79ab22da86502b8f33c0692b3b269
+FEATURE008_SPEC_SHA256=59fb07a7d885d8b754bc23c1e8adf89c3100fab4eee9c753381010c0822b1cce
+FEATURE008_DESIGN_SHA256=d50bb4655b94a6fcd3dc4f56baa46609bce795d91de9b812a0fbfd96eaaa83b4
+FEATURE008_PLAN_SHA256=53e32cc7a9b19a9a61304a999388758e8b288aec4197fb513e6b5de0f7772833
+FEATURE008_TASKS_SHA256=4859a4052d9510e9ee9cd8de46588eade96f0247e87c0a61b7e3b430793a6b8f
+SPECS_DS_STORE_SHA256=3997f3af185d3d6ac31d493a98e75ee397088b6fcf966ecee095d1264bd00e51
+PRISMA_SCHEMA_SHA256=e14673993010d994259e6a1d611c02f22b217752890abfc8b63cc812ea38d733
+PRISMA_MIGRATIONS_HASH_SET_CHANGED=NO
+```
+
+Checkpoint state:
+
+```text
+T001_RESULT=FAIL
+T002_RESULT=PASS
+T003_RESULT=PASS
+T004_RESULT=PASS
+T005_RESULT=BLOCKED
+PREDECESSOR_CONTRACT_BASELINE_RESULT=BLOCKED
+PHASE1_EXECUTED=NO
+PHASE2_EXECUTED=NO
+NEXT_ACTION=HUMAN_REVIEW_REQUIRED
+```
+
+#### T001 Gateway Startup Recovery Diagnosis — 2026-09-10
+
+The diagnostic rerun preserved the production provider graph, assertions, and `process.exit(1)` behavior. A temporary Jest setup outside the repository only mirrored the existing captured Nest logger error to stderr; it did not override a provider or intercept the exit. The earliest meaningful exception was:
+
+```text
+TrustProfileRuntimeReadinessError: Profile runtime readiness cannot be completed.
+at TrustProfileRuntimeReadiness.assertReady
+at GatewayModule MultiProfileUpstreamTokenVerifier useFactory
+at NestFactory.create(GatewayModule)
+```
+
+The isolated failed-run database contained one `Customer`, one `IntegrationBinding`, and one active `GatewaySigningKey`, but zero `RegisteredUpstreamTrustProfile` rows. `TrustProfileRuntimeReadiness.assertReady()` requires at least one enabled, active, RS256 profile with nonblank issuer/audience and a JWKS URI accepted by `ProductionJwksSourceRegistrationPolicy`. The current harness provisions no such profile and still supplies only legacy `GATEWAY_UPSTREAM_*` environment values. Existing Gateway wiring tests explicitly require startup to fail when the persisted profile set is empty even if those legacy values exist. In addition, the harness's upstream authority publishes JWKS over an HTTP loopback IP, which the current production JWKS registration policy rejects.
+
+This is `ROOT_CAUSE_CATEGORY=B`: the accepted production fail-closed behavior is operating correctly, while `test/support/gateway-backend-trust-chain-harness.ts` and its upstream test authority retain the stale assumptions that legacy environment bootstrap is sufficient and that an HTTP loopback JWKS source is eligible. Environment-only setup cannot repair the generated database or make that source satisfy the accepted policy.
+
+The minimal proposed repair is test-harness-only: provision an enabled/active RS256 `RegisteredUpstreamTrustProfile` matching the fixture token before Gateway startup, and replace the HTTP loopback JWKS fixture with a deterministic test authority/transport arrangement that exercises the accepted HTTPS hostname and destination-safety contract without weakening or bypassing production validation. Human approval is required before changing either test helper. No source or test file was modified during this diagnosis; the diagnostic setup, temporary signing directory, and exact isolated `_test` database were removed afterward.
+
+```text
+GATEWAY_STARTUP_ROOT_CAUSE=HARNESS_PROVISIONS_ZERO_ACCEPTED_REGISTERED_UPSTREAM_TRUST_PROFILES_AND_USES_A_POLICY_INELIGIBLE_HTTP_LOOPBACK_JWKS_FIXTURE
+ROOT_CAUSE_CATEGORY=B
+SOURCE_CODE_CHANGE_REQUIRED=NO
+TEST_CODE_CHANGE_REQUIRED=YES
+ENVIRONMENT_OR_SETUP_CHANGE_REQUIRED=NO
+GATEWAY_E2E_RERUN=FAIL
+T001_RESULT=FAIL
+T005_RESULT=BLOCKED
+PREDECESSOR_CONTRACT_BASELINE_RESULT=BLOCKED
+PHASE1_EXECUTED=NO
+PHASE2_EXECUTED=NO
+NEXT_ACTION=HUMAN_REVIEW_REQUIRED
+```
+
+#### T001 Human-Approved Harness Maintenance and Successful Rerun — 2026-09-10
+
+Human review accepted Category B and authorized a test-harness-only maintenance patch. The original failure and diagnosis above remain unchanged. The repair made no production change:
+
+- `test/support/gateway-backend-trust-chain-harness.ts` now creates one enabled, active, RS256 `RegisteredUpstreamTrustProfile` per fixture IntegrationBinding before compiling the real `GatewayModule`. The exact issuer, audience, and JWKS URI come from the test authority; legacy `GATEWAY_UPSTREAM_JWT_ISSUER`, `GATEWAY_UPSTREAM_JWT_AUDIENCE`, and `GATEWAY_UPSTREAM_JWKS_URI` are explicitly absent while the harness runs.
+- `test/support/gateway-upstream-test-authority.ts` now exposes `https://gateway-upstream.test:<ephemeral-port>/.well-known/jwks.json`. It generates one-day test-only TLS material in the operating-system temporary directory, uses the existing `HardenedJwksTransport` dependency seam, exercises production URI validation and both destination-resolution checks with a deterministic public-safe address, and performs the fixture request over real TLS with certificate trust and `gateway-upstream.test` hostname verification. All TLS material is deleted on disposal.
+- `test/e2e/gateway-backend-trust-chain.e2e-spec.ts` asserts the persisted profile, absence of legacy authority environment values, exact HTTPS hostname, two address checks, exact JWKS request, and an authorized TLS connection before accepting the real Gateway → Backend result.
+- `test/e2e/gateway-identity-negative.e2e-spec.ts` changed only the stale unknown-binding expectation from 403 to the accepted profile-first 401 `UPSTREAM_IDENTITY_INVALID`; without a matching persisted profile, authentication must fail before IntegrationBinding resolution. The first recovery run exposed this stale expectation with 11/12 tests passing; the corrected rerun passed 12/12.
+
+Verification evidence:
+
+```text
+npm run test:e2e -- --runInBand --runTestsByPath test/e2e/gateway-backend-trust-chain.e2e-spec.ts
+Test Suites: 1 passed, 1 total
+Tests: 1 passed, 1 total
+Snapshots: 0 total
+
+npm run test:e2e -- --runInBand --runTestsByPath test/e2e/gateway-identity-negative.e2e-spec.ts
+Test Suites: 1 passed, 1 total
+Tests: 12 passed, 12 total
+Snapshots: 0 total
+
+npm --prefix apps/gateway run test:unit -- --runTestsByPath test/integration-registry/trust-profile-runtime-readiness.spec.ts test/upstream-auth/jwks-source-policy.spec.ts test/upstream-auth/jwks-transport.spec.ts test/upstream-auth/profile-scoped-verifier.spec.ts
+Test Suites: 4 passed, 4 total
+Tests: 60 passed, 60 total
+Snapshots: 0 total
+```
+
+The related unit command's first sandboxed attempt produced `listen EPERM: operation not permitted 127.0.0.1` for its pre-existing local fixture; the identical authorized rerun above passed. No assertion was weakened for that infrastructure restriction. The original T001 Bridge and IntegrationBinding evidence plus the repaired focused e2e now establish 24/24 required baseline suites and 216/216 required baseline tests. T002–T004 evidence remains valid because all protected hashes are unchanged.
+
+```text
+GATEWAY_TEST_HARNESS_REPAIR=PASS
+ROOT_CAUSE_CATEGORY=B
+PERSISTED_TRUST_PROFILE_PROVISIONED=YES
+LEGACY_GATEWAY_UPSTREAM_ENV_USED_AS_AUTHORITY=NO
+DETERMINISTIC_HTTPS_JWKS_TEST_AUTHORITY=YES
+PRODUCTION_SOURCE_MODIFIED=NO
+PRODUCTION_TRUST_POLICY_WEAKENED=NO
+FEATURE007_HISTORY_MODIFIED=NO
+FEATURE008_AUTHORITY_CHANGED=NO
+GATEWAY_E2E=PASS
+T001_RESULT=PASS
+T002_RESULT=PASS
+T003_RESULT=PASS
+T004_RESULT=PASS
+T005_RESULT=PASS
+PREDECESSOR_CONTRACT_BASELINE_RESULT=PASS
+PHASE1_EXECUTED=YES
+PHASE2_EXECUTED=NO
+NEXT_ACTION=EXECUTE_PHASE2
+```
 
 ## Phase 2 — Shared Connector-Runtime Contracts
 
@@ -64,65 +224,218 @@
 **Dependencies**: T005.  
 **Independent test**: Valid V1 vectors parse identically while unknown or unsafe fields fail closed and generic execution inputs are structurally impossible.
 
-- [ ] T006 [RED] [P] [BACKEND] Add failing invocation and generic binding-bootstrap envelope contract tests.
+- [X] T006 [RED] [P] [BACKEND] Add failing invocation and generic binding-bootstrap envelope contract tests.
   - Files: `packages/connector-runtime-contract/test/wire/invocation.contract.spec.ts`, `packages/connector-runtime-contract/test/wire/binding.contract.spec.ts`.
   - Depends on: T005.
   - Validation: Run package tests and preserve failures caused only by absent V1 validators; require a bounded sensitive `providerPayload`, exact authenticated bootstrap profile/context, provider-dispatched result semantics, opaque reference response, and rejection of central/user/cross-profile proofs.
   - Stop: Neither generic contract may require `nativeAccessToken`, `acceptedEntry`, MenuDetail, Bridge-only bootstrap, bearer application, or JWT-exp parsing.
 
-- [ ] T007 [GREEN] [BACKEND] Implement strict invocation and binding V1 wire contracts.
+- [X] T007 [GREEN] [BACKEND] Implement strict invocation and binding V1 wire contracts.
   - Files: `packages/connector-runtime-contract/src/wire/**`, package configuration and exports under `packages/connector-runtime-contract/**`.
   - Depends on: T006.
   - Validation: Make T006 pass; verify 16,384-byte requests, 16,384-byte invocation responses, 4,096-byte binding responses, versions, request IDs, trusted context, exact registered bootstrap profile, bounded provider payload, operation, and opaque reference.
   - Stop: Do not expose these types through the public Assistant or SDK API.
 
-- [ ] T008 [RED] [P] [BACKEND] Add failing service-proof, safe-error, and limit contract tests.
+- [X] T008 [RED] [P] [BACKEND] Add failing service-proof, safe-error, and limit contract tests.
   - Files: `packages/connector-runtime-contract/test/service-auth/service-proof.contract.spec.ts`, `packages/connector-runtime-contract/test/errors/safe-errors.contract.spec.ts`, `packages/connector-runtime-contract/test/limits/limits.contract.spec.ts`.
   - Depends on: T005.
   - Validation: Preserve RED for absent central and registered binding-bootstrap claim types, provider/profile isolation, closed error codes, body/provider-payload/JSON/budget bounds, and unknown-field rejection.
   - Stop: Do not select a new algorithm, wire version, error family, or timeout authority.
 
-- [ ] T009 [GREEN] [BACKEND] Implement service-proof claims, safe errors, and shared limits.
+- [X] T009 [GREEN] [BACKEND] Implement service-proof claims, safe errors, and shared limits.
   - Files: `packages/connector-runtime-contract/src/service-auth/**`, `src/errors/**`, `src/limits/**`, and package exports.
   - Depends on: T008, T007.
   - Validation: Make T008 pass; prove the central profile and multiple exact binding-bootstrap profiles have separate issuer/audience/provider/key domains and closed code-only failures; include the Shinmone Bridge and Customer B fixture profiles.
   - Stop: Never place private keys, credentials, endpoints, raw exceptions, or caller-controlled budgets in shared values.
 
-- [ ] T010 [RED] [P] [BACKEND] Add failing closed manifest V1 schema tests.
+- [X] T010 [RED] [P] [BACKEND] Add failing closed manifest V1 schema tests.
   - Files: `packages/connector-runtime-contract/test/manifest/manifest-v1.contract.spec.ts`.
   - Depends on: T005.
   - Validation: Preserve RED for absent versioned schema, `credentialProfileRef`, `GET_QUERY_V1`, `POST_QUERY_JSON_V1`, exact operation/version, fixed mappings, read-only agreement, response extraction, limits, and strict unknown-key rejection.
   - Stop: Do not permit callbacks, arbitrary templates, wildcard operations, or executable configuration.
 
-- [ ] T011 [GREEN] [BACKEND] Implement the versioned closed manifest schema and validator.
+- [X] T011 [GREEN] [BACKEND] Implement the versioned closed manifest schema and validator.
   - Files: `packages/connector-runtime-contract/src/manifest/**` and package exports.
   - Depends on: T010, T007, T009.
   - Validation: Make T010 pass with immutable startup validation, generic bootstrap/provider/credential/profile/application interfaces, and the two closed read-request profile schemas.
   - Stop: No Customer endpoint, credential value, policy decision, or ToolDefinition registration belongs in the shared package.
 
-- [ ] T012 [RED] [BACKEND] Add structural-negative tests for all prohibited generic inputs.
+- [X] T012 [RED] [BACKEND] Add structural-negative tests for all prohibited generic inputs.
   - Files: `packages/connector-runtime-contract/test/wire/prohibited-inputs.contract.spec.ts`, `test/manifest/closed-dsl-negative.contract.spec.ts`.
   - Depends on: T007, T009, T011.
   - Validation: Demonstrate RED if accepted generic types can require Shinmone/Feature 007 token/Entry/JWT fields or represent arbitrary URL/method/path/query/header/body/credential, executable template/callback/script, SQL, shell, generic command, or side effect.
   - Stop: Do not weaken the test through type casts or permissive unknown records.
 
-- [ ] T013 [GREEN] [BACKEND] Close shared validators and exports against prohibited input representation.
+- [X] T013 [GREEN] [BACKEND] Close shared validators and exports against prohibited input representation.
   - Files: `packages/connector-runtime-contract/src/wire/**`, `src/manifest/**`, `src/limits/**`, package root exports.
   - Depends on: T012.
   - Validation: Make T012 pass and rerun T006, T008, and T010 suites.
   - Stop: Shinmone `nativeAccessToken`, `acceptedEntry`, bearer, MenuDetail, and JWT-exp semantics belong only to its later integration provider, never the generic contract package.
 
-- [ ] T014 [VERIFY] [BACKEND] Verify shared-package build, deterministic vectors, and dependency isolation.
+- [X] T014 [VERIFY] [BACKEND] Verify shared-package build, deterministic vectors, and dependency isolation.
   - Files: `packages/connector-runtime-contract/**`, root package build wiring if required by the accepted package layout.
   - Depends on: T013.
   - Validation: Run package tests/build/typecheck and verify no Nest/Prisma/Assistant/Customer integration import; source guards reject Shinmone paths/result fields/IDs and mandatory native-token/Entry/Bridge/bearer/JWT assumptions.
   - Stop: Do not begin central or Customer-local network behavior in this phase.
 
-- [ ] T015 [CHECKPOINT] [BACKEND] Verify and record the Phase 2 contract gate.
+- [X] T015 [CHECKPOINT] [BACKEND] Verify and record the Phase 2 contract gate.
   - Files: `specs/009-productized-business-connector-runtime/tasks.md` evidence only.
   - Depends on: T007, T009, T011, T013, T014.
   - Validation: Record a machine-readable evidence block with `CONNECTOR_RUNTIME_CONTRACT_READY=YES` only when all contract and structural-negative suites pass.
   - Stop: Phase 3 cannot start with a permissive field, unresolved contract, or failing package build.
+
+### Phase 2 Execution Evidence — 2026-09-10
+
+Phase 2 created only the isolated dependency-free shared contract package and this checkpoint evidence. The Spec Kit prerequisite helper reported the repository's unrelated Feature 002 branch context, but the explicit accepted Feature 009 path, Phase 1 PASS metadata, T005 dependency, and protected hashes were present and authoritative. No implementation hook was registered. Phase 1's failure → diagnosis → approved harness recovery evidence above remains unchanged.
+
+| Task | Result | Evidence |
+| --- | --- | --- |
+| T006 | PASS | Authentic RED: 2/2 suites failed to compile only because `../../src` and the V1 validators did not exist; 0 tests ran. |
+| T007 | PASS | Wire GREEN: 2/2 suites and 18/18 tests passed for exact-byte bounds, strict invocation/bootstrap envelopes, expected profile dispatch, opaque reference response, and code-only failures. |
+| T008 | PASS | Authentic RED: 3/3 suites failed to compile only because service-proof, safe-error, and limit exports did not exist; 0 tests ran. |
+| T009 | PASS | Service/error/limit GREEN: after correcting an initially over-restrictive `typ` profile-value check, the focused five-suite regression passed 34/34 tests. Central, reference Bridge, and Customer B fixture profiles remain separate test domains. |
+| T010 | PASS | Authentic RED: the manifest suite failed to compile because `parseConnectorOperationManifestV1` did not exist; 0 tests ran. |
+| T011 | PASS | Manifest GREEN: compile-time implementation issues and one traversal-validator miss were corrected without weakening tests; the six-suite regression passed 52/52 tests. Both closed read profiles and Customer B's POST-query operation are representable. |
+| T012 | PASS | Authentic structural RED: 2/2 suites failed on four unused `@ts-expect-error` directives, proving direct construction remained possible for arguments, provider payload, GET path/query, and POST body; 0 tests ran. |
+| T013 | PASS | Structural GREEN: parser-produced opaque/branded values closed all four surfaces; 2/2 structural suites passed 11/11 tests and the then-complete package passed 8/8 suites and 63/63 tests. |
+| T014 | PASS | Final package verification passed 10/10 suites and 68/68 tests, build, source/test typecheck, deterministic vectors, zero-dependency/import checks, Customer-assumption source guards, and emitted-declaration open-record guards. |
+| T015 | PASS | Protected hashes matched the Phase 1 baseline; only the new shared package and this Phase 2 evidence are task-created changes. T016 and every later task remain unchecked and unexecuted. |
+
+Commands executed for Phase 2 validation:
+
+```text
+.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
+git status --short [--untracked-files=all]
+shasum -a 256 <protected Feature 009/007/008, Prisma, and .DS_Store paths>
+npm --prefix packages/connector-runtime-contract test -- --runInBand --runTestsByPath test/wire/invocation.contract.spec.ts test/wire/binding.contract.spec.ts
+npm --prefix packages/connector-runtime-contract test -- --runInBand --runTestsByPath test/service-auth/service-proof.contract.spec.ts test/errors/safe-errors.contract.spec.ts test/limits/limits.contract.spec.ts
+npm --prefix packages/connector-runtime-contract test -- --runInBand --runTestsByPath test/manifest/manifest-v1.contract.spec.ts
+npm --prefix packages/connector-runtime-contract test -- --runInBand --runTestsByPath test/wire/prohibited-inputs.contract.spec.ts test/manifest/closed-dsl-negative.contract.spec.ts
+npm --prefix packages/connector-runtime-contract test -- --runInBand
+npm --prefix packages/connector-runtime-contract run build
+npm --prefix packages/connector-runtime-contract run typecheck
+rg <dependency/import, Customer-assumption, and emitted open-record guards>
+```
+
+Protected hashes after Phase 2, unchanged from Phase 1:
+
+```text
+FEATURE009_SPEC_SHA256=d73dfe52922e71f2d1481b8638fcd9cd3dadf83f5ecc1a399586cebc02a41b73
+FEATURE009_DESIGN_SHA256=250659dc2e4bef3361953b07d99fd1a37278989a4f6a71644860abc0387801a8
+FEATURE009_PLAN_SHA256=00fc5b55351f980deb063d07de555dc88213b5acf71b7e30855cade067f875c1
+FEATURE007_SPEC_SHA256=030f899f46d94d15b1357fb62de599e578a22cae5c388ddd35f57f194fa997cd
+FEATURE007_DESIGN_SHA256=22439db8e4d7154d24311e41ecdea05c22d55edca159076779024a89c33be369
+FEATURE007_PLAN_SHA256=cf3a2d5c36345eea6d61b7c26ce9cda20a4503cbc1a6b748a478fda3b0c9f9ea
+FEATURE007_TASKS_SHA256=eb6f7c4cded0e704fff9ef9e46dda7e4d6c79ab22da86502b8f33c0692b3b269
+FEATURE008_SPEC_SHA256=59fb07a7d885d8b754bc23c1e8adf89c3100fab4eee9c753381010c0822b1cce
+FEATURE008_DESIGN_SHA256=d50bb4655b94a6fcd3dc4f56baa46609bce795d91de9b812a0fbfd96eaaa83b4
+FEATURE008_PLAN_SHA256=53e32cc7a9b19a9a61304a999388758e8b288aec4197fb513e6b5de0f7772833
+FEATURE008_TASKS_SHA256=4859a4052d9510e9ee9cd8de46588eade96f0247e87c0a61b7e3b430793a6b8f
+PRISMA_SCHEMA_SHA256=e14673993010d994259e6a1d611c02f22b217752890abfc8b63cc812ea38d733
+SPECS_DS_STORE_SHA256=3997f3af185d3d6ac31d493a98e75ee397088b6fcf966ecee095d1264bd00e51
+```
+
+Checkpoint result:
+
+```text
+T006_RESULT=PASS
+T007_RESULT=PASS
+T008_RESULT=PASS
+T009_RESULT=PASS
+T010_RESULT=PASS
+T011_RESULT=PASS
+T012_RESULT=PASS
+T013_RESULT=PASS
+T014_RESULT=PASS
+T015_RESULT=PASS
+RED_GREEN_EVIDENCE=PASS
+CONNECTOR_RUNTIME_CONTRACT_READY=YES
+SHINMONE_REQUIRED_BY_GENERIC_CONTRACT=NO
+NATIVE_ACCESS_TOKEN_REQUIRED_BY_GENERIC_CONTRACT=NO
+ACCEPTED_ENTRY_REQUIRED_BY_GENERIC_CONTRACT=NO
+BEARER_REQUIRED_BY_GENERIC_CONTRACT=NO
+JWT_EXP_REQUIRED_BY_GENERIC_CONTRACT=NO
+ARBITRARY_URL_REPRESENTABLE=NO
+ARBITRARY_METHOD_REPRESENTABLE=NO
+ARBITRARY_HEADER_REPRESENTABLE=NO
+ARBITRARY_BODY_REPRESENTABLE=NO
+GENERIC_SQL_REPRESENTABLE=NO
+GENERIC_COMMAND_REPRESENTABLE=NO
+SYNTHETIC_CUSTOMER_B_REPRESENTABLE=YES
+FEATURE007_HISTORY_MODIFIED=NO
+FEATURE008_AUTHORITY_CHANGED=NO
+PRODUCTION_ASSISTANT_CORE_MODIFIED=NO
+PHASE2_EXECUTED=YES
+PHASE3_EXECUTED=NO
+NEXT_ACTION=EXECUTE_PHASE3
+```
+
+### Phase 2 Human-Gate Hardening — 2026-09-10
+
+Post-checkpoint human review accepted the Phase 2 architecture and required two test-quality/trust-stage corrections without reopening T006–T015. The wire parser's argument brand is now `BoundedOperationArguments`, accurately expressing only bounded parser provenance; operation-specific input-schema validation and request mapping remain deferred to Phase 5. The parser-only brand still prevents direct construction from an ordinary object, while `ValidatedProviderPayload` remains unchanged because the selected profile actually validates it.
+
+The two deterministic tests now use fixed input → complete exact normalized-output golden assertions. The invocation vector locks every envelope, context, operation, argument, budget, and reference field plus deep freezing. The Customer-neutral, Customer-B-compatible POST-query manifest vector locks its complete normalized schema, request profile/path/fixed body/mapping, credential profile, response/extraction, limits, error map, readiness dependency, and deep freezing. No self-comparison-only vector remains.
+
+Validation evidence:
+
+```text
+npm --prefix packages/connector-runtime-contract test -- --runInBand
+Test Suites: 10 passed, 10 total
+Tests: 68 passed, 68 total
+Snapshots: 0 total
+
+npm --prefix packages/connector-runtime-contract run build
+RESULT=PASS
+
+npm --prefix packages/connector-runtime-contract run typecheck
+RESULT=PASS
+
+git diff --check
+RESULT=PASS
+
+VALIDATED_OPERATION_ARGUMENTS_SYMBOL_REMAINING=NO
+BOUNDED_OPERATION_ARGUMENTS_EXPORTED=YES
+DIRECT_UNVALIDATED_ARGUMENT_CONSTRUCTION_ALLOWED=NO
+SELF_COMPARISON_ONLY_VECTOR_REMAINING=NO
+PACKAGE_DEPENDENCY_IMPORT_GUARD=PASS
+PACKAGE_CUSTOMER_ASSUMPTION_GUARD=PASS
+```
+
+Protected Feature 009 inputs remained unchanged:
+
+```text
+FEATURE009_SPEC_SHA256=d73dfe52922e71f2d1481b8638fcd9cd3dadf83f5ecc1a399586cebc02a41b73
+FEATURE009_DESIGN_SHA256=250659dc2e4bef3361953b07d99fd1a37278989a4f6a71644860abc0387801a8
+FEATURE009_PLAN_SHA256=00fc5b55351f980deb063d07de555dc88213b5acf71b7e30855cade067f875c1
+FEATURE007_HISTORY_MODIFIED=NO
+FEATURE008_AUTHORITY_CHANGED=NO
+PRISMA_MODIFIED=NO
+```
+
+Hardening-attributed changed files:
+
+```text
+packages/connector-runtime-contract/src/wire/wire.types.ts
+packages/connector-runtime-contract/src/wire/wire.validation.ts
+packages/connector-runtime-contract/test/wire/invocation.contract.spec.ts
+packages/connector-runtime-contract/test/wire/prohibited-inputs.contract.spec.ts
+packages/connector-runtime-contract/test/vectors/deterministic-vectors.spec.ts
+specs/009-productized-business-connector-runtime/tasks.md
+```
+
+```text
+FEATURE009_PHASE2_HUMAN_GATE_HARDENING=PASS
+OPERATION_ARGUMENT_WIRE_TYPE=BoundedOperationArguments
+OPERATION_ARGUMENT_SCHEMA_VALIDATION_DEFERRED_TO_PHASE5=YES
+INVOCATION_GOLDEN_VECTOR=PASS
+MANIFEST_GOLDEN_VECTOR=PASS
+CUSTOMER_B_REPRESENTABLE=YES
+T006_T015_REMAIN_COMPLETE=YES
+T016_EXECUTED=NO
+PHASE3_EXECUTED=NO
+CONNECTOR_RUNTIME_CONTRACT_READY=YES
+NEXT_ACTION=EXECUTE_PHASE3
+```
 
 ## Phase 3 — Customer-Local Configuration, Service Authentication, and Replay
 
@@ -1085,9 +1398,13 @@ PHASE14_STAGING_GATE_EXPLICIT=YES
 SDK_IMPLEMENTATION_TASKS_PRESENT=NO
 FEATURE007_HISTORICAL_TASKS_REWRITTEN=NO
 OPEN_TASK_DESIGN_BLOCKERS=0
-PHASE1_EXECUTED=NO
+PREDECESSOR_CONTRACT_BASELINE_RESULT=PASS
+PHASE1_EXECUTED=YES
+CONNECTOR_RUNTIME_CONTRACT_READY=YES
+PHASE2_EXECUTED=YES
+PHASE3_EXECUTED=NO
 IMPLEMENTATION_GATE_APPROVED=YES
 HUMAN_IMPLEMENTATION_GATE_REVIEW=PASS
 READY_FOR_HUMAN_GATE_REVIEW=NO
-NEXT_ACTION=EXECUTE_PHASE1
+NEXT_ACTION=EXECUTE_PHASE3
 ```

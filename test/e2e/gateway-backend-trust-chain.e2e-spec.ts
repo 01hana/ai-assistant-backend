@@ -8,6 +8,23 @@ describe('Gateway → Backend real trust-chain foundation (T071)', () => {
   it('accepts a real upstream JWT only through Gateway binding, signing, JWKS, and Backend CustomerScope', async () => {
     const harness = await createGatewayBackendTrustChainHarness({ label: 'gateway-backend-trust-chain', bindings: [customerA] });
     try {
+      const persistedProfile = await harness.prisma.registeredUpstreamTrustProfile.findUniqueOrThrow({
+        where: { integrationId_version: { integrationId: customerA.integrationId, version: 1 } }
+      });
+      expect(persistedProfile).toMatchObject({
+        integrationId: customerA.integrationId,
+        expectedIssuer: harness.upstreamAuthority.issuer,
+        expectedAudience: harness.upstreamAuthority.audience,
+        jwksUri: harness.upstreamAuthority.jwksUri,
+        algorithm: 'RS256',
+        enabled: true,
+        lifecycle: 'active'
+      });
+      expect(new URL(harness.upstreamAuthority.jwksUri)).toMatchObject({ protocol: 'https:', hostname: 'gateway-upstream.test' });
+      expect(process.env.GATEWAY_UPSTREAM_JWT_ISSUER).toBeUndefined();
+      expect(process.env.GATEWAY_UPSTREAM_JWT_AUDIENCE).toBeUndefined();
+      expect(process.env.GATEWAY_UPSTREAM_JWKS_URI).toBeUndefined();
+
       const upstreamToken = await harness.upstreamAuthority.issue({
         integrationId: customerA.integrationId,
         subject: 'phase8-actor-shared',
@@ -30,6 +47,9 @@ describe('Gateway → Backend real trust-chain foundation (T071)', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({ requestId: 'phase8-happy-create', data: { sessionId: expect.any(String), status: 'active' } });
+      expect(harness.upstreamAuthority.transportEvidence.requestedUris).toEqual([harness.upstreamAuthority.jwksUri]);
+      expect(harness.upstreamAuthority.transportEvidence.resolvedHostnames).toEqual(['gateway-upstream.test', 'gateway-upstream.test']);
+      expect(harness.upstreamAuthority.transportEvidence.tlsAuthorizedConnections).toEqual([true]);
       const serializedResponse = JSON.stringify(response.body);
       expect(serializedResponse).not.toContain(upstreamToken);
       expect(serializedResponse).not.toContain(harness.signingFixture.privatePem);
