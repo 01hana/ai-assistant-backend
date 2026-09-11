@@ -16,6 +16,15 @@ export type VerifiedServiceProof = Readonly<{
   jti: string;
   expiresAt: number;
   requestId: string;
+  providerKey?: string;
+  trustedContext?: Readonly<{
+    customerId: string;
+    integrationId: string;
+    hostApp: string;
+    connectorInstanceId: string;
+    organizationId?: string;
+    actorId?: string;
+  }>;
   claims: Readonly<Record<string, unknown>>;
 }>;
 
@@ -48,9 +57,17 @@ export class ConnectorServiceProofVerifier {
   }
 
   async verifySignature(kind: RuntimeProfileKind, compactJwt: string, expectedProfileKey?: string): Promise<SignatureVerificationResult> {
+    return this.verifySignatureCandidate(kind, compactJwt, expectedProfileKey, false);
+  }
+
+  async verifyRegisteredBootstrapSignature(compactJwt: string): Promise<SignatureVerificationResult> {
+    return this.verifySignatureCandidate('binding-bootstrap', compactJwt, undefined, true);
+  }
+
+  private async verifySignatureCandidate(kind: RuntimeProfileKind, compactJwt: string, expectedProfileKey: string | undefined, registeredBootstrap: boolean): Promise<SignatureVerificationResult> {
     try {
       if (typeof compactJwt !== 'string' || compactJwt.length === 0 || compactJwt.length > 16_384) return signatureFailure();
-      if (kind === 'binding-bootstrap' && !expectedProfileKey) return signatureFailure();
+      if (kind === 'binding-bootstrap' && !expectedProfileKey && !registeredBootstrap) return signatureFailure();
       const resolved = await this.registry.resolve(kind, compactJwt, expectedProfileKey);
       if (!resolved) return signatureFailure();
       const verified = await compactVerify(compactJwt, resolved.verificationKey, { algorithms: ['RS256'] });
@@ -83,6 +100,9 @@ export class ConnectorServiceProofVerifier {
       jti: parsed.value.claims.jti,
       expiresAt: parsed.value.claims.exp,
       requestId: parsed.value.claims.request_id,
+      ...(signature.kind === 'binding-bootstrap'
+        ? { providerKey: signature.profile.providerKey, trustedContext: (parsed.value as never as { trustedContext: VerifiedServiceProof['trustedContext'] }).trustedContext }
+        : {}),
       claims: parsed.value.claims as unknown as Readonly<Record<string, unknown>>
     }) });
   }

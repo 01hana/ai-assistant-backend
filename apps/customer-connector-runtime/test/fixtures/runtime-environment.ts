@@ -9,6 +9,9 @@ export function validRuntimeEnvironment(): Record<string, unknown> {
   return {
     CONNECTOR_RUNTIME_PROCESS_ROLE: 'single-replica',
     CONNECTOR_REPLAY_CACHE_MAX_ENTRIES: '64',
+    CONNECTOR_BINDING_STORE_MAX_ENTRIES: '4096',
+    CONNECTOR_BINDING_SCOPE_MAX_ENTRIES: '64',
+    CONNECTOR_BINDING_SWEEP_BATCH_SIZE: '128',
     CONNECTOR_RUNTIME_CONTEXT_JSON: JSON.stringify([
       context('reference-customer', 'reference-integration', 'reference-host', 'reference-connector-1'),
       context('customer-b', 'inventory-b', 'customer-b-inventory', 'customer-b-inventory-connector-1')

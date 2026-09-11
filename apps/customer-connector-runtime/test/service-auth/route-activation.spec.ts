@@ -2,12 +2,15 @@ import request from 'supertest';
 import { createCustomerConnectorRuntimeApplication } from '../../src/main';
 import { validRuntimeEnvironment } from '../fixtures/runtime-environment';
 
-describe('Phase 3 protected route inactivity', () => {
-  it.each(['/v1/internal/connector-bindings', '/v1/connector/invocations'])('does not activate POST %s', async (path) => {
+describe('protected route activation boundary', () => {
+  it('activates only the binding route in Phase 4', async () => {
     const app = await createCustomerConnectorRuntimeApplication(validRuntimeEnvironment());
     await app.init();
     try {
-      await request(app.getHttpServer()).post(path).set('Authorization', 'Bearer sentinel').send({ providerPayload: 'secret' }).expect(404);
+      await request(app.getHttpServer()).post('/v1/internal/connector-bindings')
+        .set('Content-Type', 'application/json').set('Authorization', 'Bearer sentinel').send({ providerPayload: 'secret' }).expect(401);
+      await request(app.getHttpServer()).post('/v1/connector/invocations')
+        .set('Authorization', 'Bearer sentinel').send({ providerPayload: 'secret' }).expect(404);
     } finally {
       await app.close();
     }

@@ -36,6 +36,9 @@ export interface RuntimeServiceProfileConfiguration {
 export interface ConnectorRuntimeConfiguration {
   readonly processRole: 'single-replica';
   readonly replayCacheMaxEntries: number;
+  readonly bindingStoreMaxEntries: number;
+  readonly bindingScopeMaxEntries: number;
+  readonly bindingSweepBatchSize: number;
   readonly contexts: readonly RuntimeTrustedContextConfiguration[];
   readonly centralProfiles: readonly RuntimeServiceProfileConfiguration[];
   readonly bootstrapProfiles: readonly RuntimeServiceProfileConfiguration[];
@@ -76,10 +79,14 @@ export function parseConnectorRuntimeConfiguration(environment: Record<string, u
     const config: ConnectorRuntimeConfiguration = {
       processRole: 'single-replica',
       replayCacheMaxEntries: integer(environment.CONNECTOR_REPLAY_CACHE_MAX_ENTRIES, 1, 100_000),
+      bindingStoreMaxEntries: integer(environment.CONNECTOR_BINDING_STORE_MAX_ENTRIES, 1, 100_000),
+      bindingScopeMaxEntries: integer(environment.CONNECTOR_BINDING_SCOPE_MAX_ENTRIES, 1, 100_000),
+      bindingSweepBatchSize: integer(environment.CONNECTOR_BINDING_SWEEP_BATCH_SIZE, 1, 100_000),
       contexts,
       centralProfiles,
       bootstrapProfiles
     };
+    if (config.bindingScopeMaxEntries > config.bindingStoreMaxEntries || config.bindingSweepBatchSize > config.bindingStoreMaxEntries) fail();
     return Object.freeze({ ok: true, config: deepFreeze(config) });
   } catch {
     return Object.freeze({ ok: false, category: 'invalid_configuration' });

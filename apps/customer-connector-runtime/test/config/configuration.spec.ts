@@ -9,6 +9,9 @@ describe('Customer Connector Runtime immutable configuration', () => {
     if (!result.ok) return;
     expect(result.config.processRole).toBe('single-replica');
     expect(result.config.replayCacheMaxEntries).toBe(64);
+    expect(result.config.bindingStoreMaxEntries).toBe(4_096);
+    expect(result.config.bindingScopeMaxEntries).toBe(64);
+    expect(result.config.bindingSweepBatchSize).toBe(128);
     expect(result.config.contexts).toHaveLength(2);
     expect(result.config.centralProfiles).toHaveLength(1);
     expect(result.config.bootstrapProfiles).toHaveLength(2);
@@ -21,6 +24,9 @@ describe('Customer Connector Runtime immutable configuration', () => {
     'CONNECTOR_CENTRAL_TRUST_KEYS_JSON',
     'CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON',
     'CONNECTOR_REPLAY_CACHE_MAX_ENTRIES',
+    'CONNECTOR_BINDING_STORE_MAX_ENTRIES',
+    'CONNECTOR_BINDING_SCOPE_MAX_ENTRIES',
+    'CONNECTOR_BINDING_SWEEP_BATCH_SIZE',
     'CONNECTOR_RUNTIME_PROCESS_ROLE'
   ])('fails closed without required %s', (name) => {
     const environment = validRuntimeEnvironment();
@@ -64,6 +70,9 @@ describe('Customer Connector Runtime immutable configuration', () => {
     expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_PRIVATE_KEY: 'secret' }).ok).toBe(false);
     expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_RUNTIME_CONTEXT_JSON: '[{"customerId":"*"}]' }).ok).toBe(false);
     expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_REPLAY_CACHE_MAX_ENTRIES: '100001' }).ok).toBe(false);
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_BINDING_STORE_MAX_ENTRIES: '0' }).ok).toBe(false);
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_BINDING_STORE_MAX_ENTRIES: '32', CONNECTOR_BINDING_SCOPE_MAX_ENTRIES: '33' }).ok).toBe(false);
+    expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_BINDING_STORE_MAX_ENTRIES: '32', CONNECTOR_BINDING_SWEEP_BATCH_SIZE: '33' }).ok).toBe(false);
 
     const bootstrap = JSON.parse(String(base.CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON)) as Array<Record<string, unknown>>;
     bootstrap[1] = { ...bootstrap[1], keyDomain: bootstrap[0]?.keyDomain };

@@ -2,11 +2,13 @@ import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CustomerConnectorRuntimeModule } from './customer-connector-runtime.module';
+import type { BindingBootstrapProvider } from './bindings/binding-bootstrap-provider';
 
 export async function createCustomerConnectorRuntimeApplication(
-  environment: Record<string, unknown> = process.env
+  environment: Record<string, unknown> = process.env,
+  bootstrapProviders: readonly BindingBootstrapProvider[] = []
 ): Promise<INestApplication> {
-  return NestFactory.create(CustomerConnectorRuntimeModule.forEnvironment(environment), {
+  return NestFactory.create(CustomerConnectorRuntimeModule.forEnvironment(environment, bootstrapProviders), {
     bufferLogs: true,
     bodyParser: false
   });

@@ -1,15 +1,17 @@
 # Tasks: Feature 009 — Productized Business Connector Runtime
 
 **Input**: Accepted `spec.md`, `design.md`, and `plan.md` approved for Phase 1 implementation.
-**Status**: Accepted — Phase 1 baseline, Phase 2 shared-contract gate, and Phase 3 security-foundation gate completed. T001–T026 are complete; Phase 4 is unexecuted.
+**Status**: Accepted — Phase 1 baseline, Phase 2 shared-contract gate, Phase 3 security-foundation gate, and Phase 4 Customer-local binding gate completed. T001–T035 are complete; Phase 5 is unexecuted.
 
 ```text
 PHASE1_EXECUTED=YES
 PHASE2_EXECUTED=YES
 PHASE3_EXECUTED=YES
-T001_T026_COMPLETE=YES
-PHASE4_EXECUTED=NO
-FIRST_UNEXECUTED_TASK=T027
+T001_T035_COMPLETE=YES
+PHASE4_EXECUTED=YES
+PHASE5_EXECUTED=NO
+FIRST_UNEXECUTED_TASK=T036
+NEXT_ACTION=EXECUTE_PHASE5
 ```
 **Scope**: Implement the reusable two-sided connector runtime, executable Synthetic Customer B portability fixture, removable Shinmone reference slice, and Shinmone-removal gate through the existing Feature 008 path. Feature 007 is a completed read-only predecessor; Phase 8 is `FEATURE009_IMPLEMENTATION_CONSUMING_ACCEPTED_FEATURE007_AMENDMENT`, never Feature 007 reimplementation.
 **Test rule**: Every meaningful new contract or behavior starts with an authentic RED against current code, followed by the narrow GREEN and the phase checkpoint. Never manufacture RED by breaking production code.
@@ -755,59 +757,282 @@ NEXT_ACTION=EXECUTE_PHASE4
 **Dependencies**: T026.  
 **Independent test**: One valid reference resolves locally within its exact tuple and lifetime; every mismatch fails before credential access.
 
-- [ ] T027 [RED] [US1] [CONNECTOR-RUNTIME] Add failing reference generation, hashed lookup, and TTL tests.
+- [X] T027 [RED] [US1] [CONNECTOR-RUNTIME] Add failing reference generation, hashed lookup, and TTL tests.
   - Files: `apps/customer-connector-runtime/test/bindings/binding-store.spec.ts`.
   - Depends on: T026.
   - Validation: Cover 256-bit `ccr_` references, SHA-256 lookup key, no raw-reference storage, 120-second max, optional provider expiry cap minus 15 seconds, 60-second absent-cap fallback, 15-second minimum, and no generic JWT parsing.
   - Stop: Do not persist/embed credential material, `acceptedEntry`, or `nativeAccessToken` in the reference or generic binding.
 
-- [ ] T028 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement the bounded in-memory binding store and lifetime calculation.
+- [X] T028 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement the bounded in-memory binding store and lifetime calculation.
   - Files: `apps/customer-connector-runtime/src/bindings/**`.
   - Depends on: T027.
   - Validation: Make T027 pass with injected clock/randomness, provider key, opaque credential handle, bounded provider metadata, binding/credential generations, and optional actor/organization constraints.
   - Stop: No durable store, reversible reference key, Customer-specific mandatory field, RefreshToken, cookie, or central state.
 
-- [ ] T029 [RED] [US1] [CONNECTOR-RUNTIME] Add failing exact context and single-generation tests.
+- [X] T029 [RED] [US1] [CONNECTOR-RUNTIME] Add failing exact context and single-generation tests.
   - Files: `apps/customer-connector-runtime/test/bindings/binding-context.spec.ts`.
   - Depends on: T028.
   - Validation: Vary Customer, integration, HostApp, connector instance, optional organization/actor constraints, bootstrap/credential provider, binding generation, and credential generation independently.
   - Stop: Errors must not disclose which dimension mismatched.
 
-- [ ] T030 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement exact binding context checks and atomic generation replacement.
+- [X] T030 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement exact binding context checks and atomic generation replacement.
   - Files: `apps/customer-connector-runtime/src/bindings/**`.
   - Depends on: T029.
   - Validation: Make T029 pass; successful remint revokes the prior generation before it can lease.
   - Stop: Browser, Assistant session ID, or reference possession must not establish context authority.
 
-- [ ] T031 [RED] [US1] [CONNECTOR-RUNTIME] Add failing concurrency, revoke, cleanup, and restart tests.
+- [X] T031 [RED] [US1] [CONNECTOR-RUNTIME] Add failing concurrency, revoke, cleanup, and restart tests.
   - Files: `apps/customer-connector-runtime/test/bindings/binding-lifecycle.spec.ts`.
   - Depends on: T030.
   - Validation: Cover four leases, fifth busy before provider resolution, finally-release, expiry, administrative/provider rejection, bounded sweep, provider-handle teardown, and restart invalidation.
   - Stop: Do not exceed four leases or leave a provider handle/credential accessible after revoke/expiry.
 
-- [ ] T032 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement lease, revocation, cleanup, and shutdown lifecycle.
+- [X] T032 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement lease, revocation, cleanup, and shutdown lifecycle.
   - Files: `apps/customer-connector-runtime/src/bindings/**` and local shutdown composition.
   - Depends on: T031.
   - Validation: Make T031 pass under deterministic timers and concurrent access.
   - Stop: Do not add cross-replica semantics or claim horizontal readiness.
 
-- [ ] T033 [RED] [US1] [CONNECTOR-RUNTIME] Add failing Customer-local binding server-route, leak, and cross-boundary tests.
+- [X] T033 [RED] [US1] [CONNECTOR-RUNTIME] Add failing Customer-local binding server-route, leak, and cross-boundary tests.
   - Files: `apps/customer-connector-runtime/test/bindings/connector-binding-route.spec.ts`, `test/bindings/binding-security.spec.ts`, `test/observability/redaction.spec.ts`.
   - Depends on: T032.
   - Validation: Preserve store/leak/tuple coverage and prove the absent exact `POST /v1/internal/connector-bindings`; require POST, JSON/no encoding, 16,384-byte cap, one exact registered bootstrap `typ`/issuer/audience/provider/key profile, raw-byte SHA-256 before JSON trust, freshness/replay, signed context equality, strict generic schema with bounded sensitive `providerPayload`, provider-owned handle/cap/metadata result, and rejection of Feature 007 user JWTs, central proofs, and other bootstrap profiles. Require order raw method/content/bounds → profile proof/digest → freshness/replay/context → parse/schema → profile/config equality → selected `BindingBootstrapProvider` closed validation/create → `ConnectorBindingService.mint()` → only version/requestId/reference/expiresIn within 4,096 bytes; failures are safe and all sensitive values are redacted.
   - Stop: Never satisfy through post-storage redaction; no Browser/profile override, cross-profile provider dispatch, identity authority, generic JWT parse, or credential field in the binding.
 
-- [ ] T034 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement and compose the generic Customer-local binding-bootstrap endpoint.
+- [X] T034 [GREEN] [US1] [CONNECTOR-RUNTIME] Implement and compose the generic Customer-local binding-bootstrap endpoint.
   - Files: `apps/customer-connector-runtime/src/bindings/connector-binding.controller.ts`, `src/bindings/connector-binding-request.service.ts`, existing `src/bindings/**`, `src/observability/**`, and narrow runtime module/root composition.
   - Depends on: T033.
   - Validation: Make T033 pass by composing Phase 3 exact bootstrap-profile verification/replay with `BindingBootstrapProviderRegistry` and `ConnectorBindingService`; activate the route only after foundations validate, preserve processing order/bounds, return no provider handle/metadata, and prove credential resolution/upstream seams remain untouched for invalid requests.
   - Stop: Do not implement any initiator/Bridge client, add identity/permission/Customer/HostApp/Entry/Gateway authority, call upstream, expose centrally, parse generic JWT expiry, or permit Browser minting.
 
-- [ ] T035 [CHECKPOINT] [US1] [CONNECTOR-RUNTIME] Verify and record the Phase 4 binding gate.
+- [X] T035 [CHECKPOINT] [US1] [CONNECTOR-RUNTIME] Verify and record the Phase 4 binding gate.
   - Files: `specs/009-productized-business-connector-runtime/tasks.md` evidence only.
   - Depends on: T028, T030, T032, T034.
   - Validation: Run all binding/route suites and record `NATIVE_CREDENTIAL_CENTRAL=NO`, `CONNECTOR_CONTEXT_REF_PERSISTED=NO`, all cross-dimension reuse denied, `BINDING_CREDENTIAL_ROUTE_ACTIVE=YES`, `BINDING_ROUTE_PROFILE=BINDING_BOOTSTRAP_ONLY`, `BINDING_ROUTE_PROFILE_ISOLATION=PASS`, `BINDING_ROUTE_NATIVE_TOKEN_CENTRAL=NO`, and `BINDING_ROUTE_SERVICE_AUTH_ORDER=PASS`; Shinmone's separate profile marker is recorded in T080.
   - Stop: Phase 5 cannot start if the Customer-local binding endpoint is inactive or insecure, or if raw reference storage, credential egress, profile confusion, ordering failure, or context ambiguity exists.
+
+### Phase 4 Execution and Human-Gate Hardening Evidence — 2026-09-11
+
+Phase 4 implemented only the Customer-local volatile binding lifecycle and the registered-bootstrap-only `POST /v1/internal/connector-bindings` route. The implementation stores a SHA-256 verifier rather than the returned raw reference, retains only provider-owned opaque handles and bounded metadata, and keeps `/v1/connector/invocations` absent. No manifest, credential resolution/application, upstream transport, Bridge client, central adapter, database, Redis, public Assistant/SSE/SDK contract, Feature 007/008 artifact, or Phase 5 task was changed or executed.
+
+| Pair | RED evidence | GREEN evidence |
+| --- | --- | --- |
+| T027 → T028 | After correcting one test-authoring matcher typo, the authentic RED was 1/1 suite failed before execution with TS2307 for the absent in-memory binding store. | The focused store/configuration run passed 2/2 suites and 16/16 tests after implementing 256-bit reference generation, SHA-256 lookup, bounded capacities/metadata, and provider-capped/fallback TTLs. |
+| T029 → T030 | 1/1 suite failed before execution with TS2307 for the absent `ConnectorBindingService`. | Exact Customer/integration/HostApp/connector/optional actor/organization/provider/generation checks and atomic generation replacement passed with the adjacent store suite: 2/2 suites and 13/13 tests. |
+| T031 → T032 | 1/1 suite failed before execution because `withLease`, `revoke`, `sweepExpired`, and `shutdown` did not exist. | Lease/revoke/cleanup/restart coverage passed with adjacent binding suites: 3/3 suites and 19/19 tests. The fifth lease fails before provider use; release is in `finally`; revoke aborts active work and awaits teardown. |
+| T033 → T034 | Route/orchestration suites failed because the provider and request-service modules were absent. The same run separately hit the expected sandbox `listen EPERM` for its local HTTP test. | The identical local-socket focused run passed 3/3 suites and 7/7 tests after composing the real bootstrap-only route. An intermediate fixture serialization mismatch produced safe 401 responses and was corrected without weakening authentication. |
+
+The first full Phase 4 regression exposed one stale Phase 3 binding-route 404 expectation plus one transient Supertest parse failure; the focused route rerun passed and the stale expectation was updated to the Phase 4 fail-closed 401 contract. The pre-hardening runtime then passed 15/15 suites and 76/76 tests. Human-gate hardening added exact optional-context presence/absence isolation, mint-failure provider-handle teardown, superseded-generation teardown, and deterministic provider-expiry composition coverage. No production change was required by that hardening.
+
+Final validation:
+
+```text
+npm --prefix apps/customer-connector-runtime test -- --runInBand
+Test Suites: 15 passed, 15 total
+Tests: 84 passed, 84 total
+Snapshots: 0 total
+
+npm --prefix apps/customer-connector-runtime run build
+RESULT=PASS
+
+npm --prefix apps/customer-connector-runtime run typecheck
+RESULT=PASS
+
+npm --prefix packages/connector-runtime-contract test -- --runInBand
+Test Suites: 10 passed, 10 total
+Tests: 68 passed, 68 total
+Snapshots: 0 total
+
+npm --prefix packages/connector-runtime-contract run build
+RESULT=PASS
+
+npm --prefix packages/connector-runtime-contract run typecheck
+RESULT=PASS
+
+git diff --check
+RESULT=PASS
+
+SPEC_KIT_PREREQUISITE_RESULT=NON_BLOCKING_BRANCH_METADATA_MISMATCH
+SPEC_KIT_PREREQUISITE_SELECTED=002-host-integration-gateway-and-data-adapter-contract
+AUTHORIZED_FEATURE_PATH=specs/009-productized-business-connector-runtime
+IMPLEMENTATION_HOOKS_CONFIGURED=NO
+```
+
+Protected hashes remained unchanged:
+
+```text
+FEATURE009_SPEC_SHA256=d73dfe52922e71f2d1481b8638fcd9cd3dadf83f5ecc1a399586cebc02a41b73
+FEATURE009_DESIGN_SHA256=250659dc2e4bef3361953b07d99fd1a37278989a4f6a71644860abc0387801a8
+FEATURE009_PLAN_SHA256=00fc5b55351f980deb063d07de555dc88213b5acf71b7e30855cade067f875c1
+FEATURE007_SPEC_SHA256=030f899f46d94d15b1357fb62de599e578a22cae5c388ddd35f57f194fa997cd
+FEATURE007_DESIGN_SHA256=22439db8e4d7154d24311e41ecdea05c22d55edca159076779024a89c33be369
+FEATURE007_PLAN_SHA256=cf3a2d5c36345eea6d61b7c26ce9cda20a4503cbc1a6b748a478fda3b0c9f9ea
+FEATURE007_TASKS_SHA256=eb6f7c4cded0e704fff9ef9e46dda7e4d6c79ab22da86502b8f33c0692b3b269
+FEATURE008_SPEC_SHA256=59fb07a7d885d8b754bc23c1e8adf89c3100fab4eee9c753381010c0822b1cce
+FEATURE008_DESIGN_SHA256=d50bb4655b94a6fcd3dc4f56baa46609bce795d91de9b812a0fbfd96eaaa83b4
+FEATURE008_PLAN_SHA256=53e32cc7a9b19a9a61304a999388758e8b288aec4197fb513e6b5de0f7772833
+FEATURE008_TASKS_SHA256=4859a4052d9510e9ee9cd8de46588eade96f0247e87c0a61b7e3b430793a6b8f
+PRISMA_SCHEMA_SHA256=e14673993010d994259e6a1d611c02f22b217752890abfc8b63cc812ea38d733
+SPECS_DS_STORE_SHA256=3997f3af185d3d6ac31d493a98e75ee397088b6fcf966ecee095d1264bd00e51
+PRISMA_MIGRATIONS_CHANGED=NO
+TASKS_PRE_PHASE4_SHA256=64761a9ad65fc710cd6ef7f0269a9435f810aa378da48ff12f61f33738f04c2f
+```
+
+Reviewed Phase 4 production binding source inventory:
+
+```text
+apps/customer-connector-runtime/src/bindings/binding-bootstrap-provider.registry.ts
+apps/customer-connector-runtime/src/bindings/binding-bootstrap-provider.ts
+apps/customer-connector-runtime/src/bindings/binding-lifecycle.manager.ts
+apps/customer-connector-runtime/src/bindings/binding-readiness.initializer.ts
+apps/customer-connector-runtime/src/bindings/binding.types.ts
+apps/customer-connector-runtime/src/bindings/connector-binding-request.service.ts
+apps/customer-connector-runtime/src/bindings/connector-binding.controller.ts
+apps/customer-connector-runtime/src/bindings/connector-binding.module.ts
+apps/customer-connector-runtime/src/bindings/connector-binding.service.ts
+apps/customer-connector-runtime/src/bindings/in-memory-connector-binding.store.ts
+```
+
+Exact Phase 4 task-attributed changed files:
+
+```text
+apps/customer-connector-runtime/src/bindings/binding-bootstrap-provider.registry.ts
+apps/customer-connector-runtime/src/bindings/binding-bootstrap-provider.ts
+apps/customer-connector-runtime/src/bindings/binding-lifecycle.manager.ts
+apps/customer-connector-runtime/src/bindings/binding-readiness.initializer.ts
+apps/customer-connector-runtime/src/bindings/binding.types.ts
+apps/customer-connector-runtime/src/bindings/connector-binding-request.service.ts
+apps/customer-connector-runtime/src/bindings/connector-binding.controller.ts
+apps/customer-connector-runtime/src/bindings/connector-binding.module.ts
+apps/customer-connector-runtime/src/bindings/connector-binding.service.ts
+apps/customer-connector-runtime/src/bindings/in-memory-connector-binding.store.ts
+apps/customer-connector-runtime/src/config/runtime-configuration.ts
+apps/customer-connector-runtime/src/customer-connector-runtime.module.ts
+apps/customer-connector-runtime/src/main.ts
+apps/customer-connector-runtime/src/service-auth/exact-raw-body.authenticator.ts
+apps/customer-connector-runtime/src/service-auth/service-proof.verifier.ts
+apps/customer-connector-runtime/test/bindings/binding-context.spec.ts
+apps/customer-connector-runtime/test/bindings/binding-lifecycle.spec.ts
+apps/customer-connector-runtime/test/bindings/binding-provider-registry.spec.ts
+apps/customer-connector-runtime/test/bindings/binding-security.spec.ts
+apps/customer-connector-runtime/test/bindings/binding-store.spec.ts
+apps/customer-connector-runtime/test/bindings/connector-binding-route.spec.ts
+apps/customer-connector-runtime/test/bootstrap.spec.ts
+apps/customer-connector-runtime/test/config/configuration.spec.ts
+apps/customer-connector-runtime/test/fixtures/runtime-environment.ts
+apps/customer-connector-runtime/test/service-auth/route-activation.spec.ts
+specs/009-productized-business-connector-runtime/tasks.md
+```
+
+The shared contract package and all protected artifacts are unchanged. The human-gate hardening itself changed only `binding-context.spec.ts`, `binding-lifecycle.spec.ts`, `binding-security.spec.ts`, and this evidence section; existing production behavior satisfied every added regression.
+
+```text
+FEATURE009_PHASE=4
+RED_GREEN_EVIDENCE=PASS
+BINDING_REFERENCE_BITS>=256
+RAW_CONNECTOR_CONTEXT_REF_STORED=NO
+BINDING_STORE_DURABLE=NO
+MAX_CONCURRENT_BINDING_LEASES=4
+BINDING_CREDENTIAL_ROUTE_ACTIVE=YES
+BINDING_ROUTE_PROFILE=BINDING_BOOTSTRAP_ONLY
+BINDING_ROUTE_PROFILE_ISOLATION=PASS
+BINDING_ROUTE_SERVICE_AUTH_ORDER=PASS
+BINDING_ROUTE_NATIVE_TOKEN_CENTRAL=NO
+NATIVE_CREDENTIAL_CENTRAL=NO
+CONNECTOR_CONTEXT_REF_PERSISTED=NO
+OPTIONAL_CONTEXT_PRESENCE_ISOLATION=PASS
+MINT_FAILURE_PROVIDER_HANDLE_TEARDOWN=PASS
+REMINT_SUPERSEDED_HANDLE_TEARDOWN=PASS
+PROVIDER_EXPIRY_COMPOSITION=PASS
+GENERIC_JWT_EXPIRY_PARSE=NO
+NATIVE_CREDENTIAL_IN_GENERIC_BINDING=NO
+CUSTOMER_SPECIFIC_GENERIC_BRANCH=NO
+DATABASE_OR_REDIS_BINDING_STORE=NO
+UPSTREAM_BUSINESS_CALL_ACTIVE=NO
+FEATURE007_HISTORICAL_FILES_MODIFIED=NO
+FEATURE008_ACCEPTED_AUTHORITY_CHANGED=NO
+PUBLIC_ASSISTANT_SSE_SDK_CHANGE=NO
+TASK_COUNT=142
+T001_T035_COMPLETE=YES
+T035=PASS
+T036_EXECUTED=NO
+PHASE4_EXECUTED=YES
+PHASE5_EXECUTED=NO
+FIRST_UNEXECUTED_TASK=T036
+NEXT_ACTION=EXECUTE_PHASE5
+```
+
+### Phase 4 Post-Checkpoint Exception-Path Hardening — 2026-09-11
+
+Human review identified one pre-transfer ownership exception path after T035: `BindingBootstrapProvider.create()` could succeed and `ConnectorBindingService.mint()` could reject before ownership transferred, while the outer safe-failure handler did not retain enough state to tear down the newly created provider handle. This hardening preserves the completed T027–T035 history and changes no Phase 4 contract or later-phase behavior.
+
+Authentic RED and focused GREEN:
+
+```text
+npm --prefix apps/customer-connector-runtime test -- --runInBand --runTestsByPath test/bindings/binding-security.spec.ts
+RED_RESULT=1 suite failed; 1 test failed, 5 passed
+RED_ASSERTION=provider.revoke expected 1 call but received 0 after bindings.mint rejected with mint-exception-sentinel
+
+npm --prefix apps/customer-connector-runtime test -- --runInBand --runTestsByPath test/bindings/binding-security.spec.ts
+GREEN_RESULT=1 suite passed; 7 tests passed
+```
+
+`ConnectorBindingRequestService` now tracks the created provider result, whether binding ownership transferred, and whether pre-transfer cleanup was attempted. Before a successful mint, request orchestration attempts `provider.revoke(handle, "mint_failed")` at most once for both a returned failure and a thrown/rejected mint. Cleanup errors are swallowed into the same code-only safe failure. Immediately after `mint()` returns success, lifecycle ownership belongs exclusively to `ConnectorBindingService`; the successful response path invokes neither provider cleanup nor binding revocation.
+
+Final validation:
+
+```text
+npm --prefix apps/customer-connector-runtime test -- --runInBand
+Test Suites: 15 passed, 15 total
+Tests: 86 passed, 86 total
+Snapshots: 0 total
+
+npm --prefix apps/customer-connector-runtime run build
+RESULT=PASS
+
+npm --prefix apps/customer-connector-runtime run typecheck
+RESULT=PASS
+
+npm --prefix packages/connector-runtime-contract test -- --runInBand
+Test Suites: 10 passed, 10 total
+Tests: 68 passed, 68 total
+Snapshots: 0 total
+
+npm --prefix packages/connector-runtime-contract run build
+RESULT=PASS
+
+npm --prefix packages/connector-runtime-contract run typecheck
+RESULT=PASS
+
+git diff --check
+RESULT=PASS
+```
+
+Protected Feature 007/008 artifacts, Feature 009 `spec.md`/`design.md`/`plan.md`, the shared contract package, Prisma schema/migrations, and `specs/.DS_Store` retained their Phase 4 checkpoint hashes. Exact hardening-attributed changed files:
+
+```text
+apps/customer-connector-runtime/src/bindings/connector-binding-request.service.ts
+apps/customer-connector-runtime/test/bindings/binding-security.spec.ts
+specs/009-productized-business-connector-runtime/tasks.md
+```
+
+```text
+FEATURE009_PHASE4_EXCEPTION_PATH_HARDENING=PASS
+MINT_RESULT_FAILURE_PROVIDER_HANDLE_TEARDOWN=PASS
+MINT_EXCEPTION_PROVIDER_HANDLE_TEARDOWN=PASS
+PROVIDER_HANDLE_OWNERSHIP_TRANSFER=PASS
+RUNTIME_TESTS=PASS
+RUNTIME_BUILD=PASS
+RUNTIME_TYPECHECK=PASS
+SHARED_CONTRACT_REGRESSION=PASS
+PRODUCTION_FILES_CHANGED=apps/customer-connector-runtime/src/bindings/connector-binding-request.service.ts
+T001_T035_COMPLETE=YES
+T035_REMAINS_COMPLETE=YES
+T036_EXECUTED=NO
+PHASE4_EXECUTED=YES
+PHASE5_EXECUTED=NO
+NEXT_ACTION=EXECUTE_PHASE5
+```
 
 ## Phase 5 — Closed Operation Manifest and Credential Boundary
 

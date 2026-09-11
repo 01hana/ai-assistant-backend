@@ -21,16 +21,30 @@ export type ExactRawBodyAuthenticationResult =
 
 export class ExactRawBodyAuthenticator {
   constructor(
-    private readonly verifier: Pick<ConnectorServiceProofVerifier, 'verifySignature' | 'isFresh' | 'validateProfileAndContext'>,
+    private readonly verifier: Pick<ConnectorServiceProofVerifier, 'verifySignature' | 'isFresh' | 'validateProfileAndContext'> &
+      Partial<Pick<ConnectorServiceProofVerifier, 'verifyRegisteredBootstrapSignature'>>,
     private readonly replay: Pick<ReplayProtectionService, 'claim'>,
     private readonly telemetry?: Pick<SafeConnectorTelemetry, 'recordServiceAuthentication'>
   ) {}
 
   async authenticate(input: ExactRawBodyAuthenticationInput): Promise<ExactRawBodyAuthenticationResult> {
+    return this.authenticateWithSignature(input, (token) => this.verifier.verifySignature(input.routeClass, token, input.expectedProfileKey));
+  }
+
+  async authenticateRegisteredBootstrap(input: Omit<ExactRawBodyAuthenticationInput, 'routeClass' | 'expectedProfileKey'> & Readonly<{ routeClass?: 'binding-bootstrap' }>): Promise<ExactRawBodyAuthenticationResult> {
+    const normalized = Object.freeze({ ...input, routeClass: 'binding-bootstrap' as const });
+    if (!this.verifier.verifyRegisteredBootstrapSignature) return this.rejected('binding-bootstrap', authFailure());
+    return this.authenticateWithSignature(normalized, (token) => this.verifier.verifyRegisteredBootstrapSignature!(token));
+  }
+
+  private async authenticateWithSignature(
+    input: ExactRawBodyAuthenticationInput,
+    verify: (token: string) => ReturnType<ConnectorServiceProofVerifier['verifySignature']>
+  ): Promise<ExactRawBodyAuthenticationResult> {
     if (!validTransport(input)) return this.rejected(input.routeClass, requestFailure());
     const token = bearer(input.authorization);
     if (!token) return this.rejected(input.routeClass, authFailure());
-    const signature = await this.verifier.verifySignature(input.routeClass, token, input.expectedProfileKey);
+    const signature = await verify(token);
     if (!signature.ok || !digestMatches(input.rawBody, signature.value.claims.body_sha256)) return this.rejected(input.routeClass, authFailure());
     if (!this.verifier.isFresh(signature.value)) return this.rejected(input.routeClass, authFailure());
     const jti = signature.value.claims.jti;
