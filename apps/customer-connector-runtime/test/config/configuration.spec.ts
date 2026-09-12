@@ -86,4 +86,38 @@ describe('Customer Connector Runtime immutable configuration', () => {
     keys[0] = { ...keys[0], publicJwk: { ...(keys[0]?.publicJwk as object), endpoint: 'forbidden' } };
     expect(parseConnectorRuntimeConfiguration({ ...base, CONNECTOR_CENTRAL_TRUST_KEYS_JSON: JSON.stringify(central) }).ok).toBe(false);
   });
+
+  it('accepts an exact immutable Phase 5 manifest/profile configuration while keeping it optional for dark runtime', () => {
+    const dark = parseConnectorRuntimeConfiguration(validRuntimeEnvironment());
+    expect(dark.ok && dark.config.manifestFiles).toEqual([]);
+    const result = parseConnectorRuntimeConfiguration({
+      ...validRuntimeEnvironment(),
+      CONNECTOR_MANIFEST_FILES: JSON.stringify(['/runtime/config/inventory/connector-manifest.v1.json']),
+      CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([{
+        credentialProfileRef: 'inventory-key-v1', credentialProviderKey: 'inventory-provider-v1',
+        applicationStrategyKey: 'inventory-strategy-v1', credentialKind: 'fixed-key-v1'
+      }])
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.config.manifestFiles).toEqual(['/runtime/config/inventory/connector-manifest.v1.json']);
+    expect(Object.isFrozen(result.config.credentialProfiles[0])).toBe(true);
+  });
+
+  it('rejects partial, relative, duplicate, wildcard, unknown-field, and duplicate-profile Phase 5 configuration', () => {
+    const base = validRuntimeEnvironment();
+    const profile = {
+      credentialProfileRef: 'inventory-key-v1', credentialProviderKey: 'inventory-provider-v1',
+      applicationStrategyKey: 'inventory-strategy-v1', credentialKind: 'fixed-key-v1'
+    };
+    for (const environment of [
+      { ...base, CONNECTOR_MANIFEST_FILES: '["/one.json"]' },
+      { ...base, CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([profile]) },
+      { ...base, CONNECTOR_MANIFEST_FILES: '["relative.json"]', CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([profile]) },
+      { ...base, CONNECTOR_MANIFEST_FILES: '["/one.json","/one.json"]', CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([profile]) },
+      { ...base, CONNECTOR_MANIFEST_FILES: '["/one.json"]', CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([{ ...profile, credentialKind: '*' }]) },
+      { ...base, CONNECTOR_MANIFEST_FILES: '["/one.json"]', CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([{ ...profile, header: 'X-Unsafe' }]) },
+      { ...base, CONNECTOR_MANIFEST_FILES: '["/one.json"]', CONNECTOR_CREDENTIAL_PROFILES_JSON: JSON.stringify([profile, profile]) }
+    ]) expect(parseConnectorRuntimeConfiguration(environment).ok).toBe(false);
+  });
 });

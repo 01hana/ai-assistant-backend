@@ -1,7 +1,7 @@
 # Tasks: Feature 009 — Productized Business Connector Runtime
 
 **Input**: Accepted `spec.md`, `design.md`, and `plan.md` approved for Phase 1 implementation.
-**Status**: Accepted — Phase 1 baseline, Phase 2 shared-contract gate, Phase 3 security-foundation gate, and Phase 4 Customer-local binding gate completed. T001–T035 are complete; Phase 5 is unexecuted.
+**Status**: Accepted — Phase 1 baseline through Phase 5 exact-manifest/credential-boundary gates completed. T001–T044 are complete; Phase 6 is unexecuted.
 
 ```text
 PHASE1_EXECUTED=YES
@@ -9,9 +9,11 @@ PHASE2_EXECUTED=YES
 PHASE3_EXECUTED=YES
 T001_T035_COMPLETE=YES
 PHASE4_EXECUTED=YES
-PHASE5_EXECUTED=NO
-FIRST_UNEXECUTED_TASK=T036
-NEXT_ACTION=EXECUTE_PHASE5
+T001_T044_COMPLETE=YES
+PHASE5_EXECUTED=YES
+PHASE6_EXECUTED=NO
+FIRST_UNEXECUTED_TASK=T045
+NEXT_ACTION=EXECUTE_PHASE6
 ```
 **Scope**: Implement the reusable two-sided connector runtime, executable Synthetic Customer B portability fixture, removable Shinmone reference slice, and Shinmone-removal gate through the existing Feature 008 path. Feature 007 is a completed read-only predecessor; Phase 8 is `FEATURE009_IMPLEMENTATION_CONSUMING_ACCEPTED_FEATURE007_AMENDMENT`, never Feature 007 reimplementation.
 **Test rule**: Every meaningful new contract or behavior starts with an authentic RED against current code, followed by the narrow GREEN and the phase checkpoint. Never manufacture RED by breaking production code.
@@ -1040,59 +1042,207 @@ NEXT_ACTION=EXECUTE_PHASE5
 **Dependencies**: T035.  
 **Independent test**: One exact fixture operation maps safely; every unknown, dynamic, executable, or excessive entry fails before credential access.
 
-- [ ] T036 [RED] [US3] [CONNECTOR-RUNTIME] Add failing closed startup manifest-schema tests.
+- [X] T036 [RED] [US3] [CONNECTOR-RUNTIME] Add failing closed startup manifest-schema tests.
   - Files: `apps/customer-connector-runtime/test/manifest/manifest-loader.spec.ts`.
   - Depends on: T035.
   - Validation: Cover duplicate key/version, unknown fields, wildcard, callback/template/script, dynamic URL/method/path/query/header/body, traversal, SQL/shell/command, non-read-only classification, unsupported request profile, and cap violations.
   - Stop: Do not relax the shared schema or allow runtime-generated executable configuration.
 
-- [ ] T037 [GREEN] [US3] [CONNECTOR-RUNTIME] Implement immutable startup manifest loading and readiness failure.
+- [X] T037 [GREEN] [US3] [CONNECTOR-RUNTIME] Implement immutable startup manifest loading and readiness failure.
   - Files: `apps/customer-connector-runtime/src/manifest/**`, `src/health/**`.
   - Depends on: T036.
   - Validation: Make T036 pass using read-only absolute manifest files and strict shared validation.
   - Stop: No hot reload, callbacks, wildcard operation, or partially valid registry.
 
-- [ ] T038 [RED] [US3] [CONNECTOR-RUNTIME] Add failing exact operation/version and validated-argument mapping tests.
+- [X] T038 [RED] [US3] [CONNECTOR-RUNTIME] Add failing exact operation/version and validated-argument mapping tests.
   - Files: `apps/customer-connector-runtime/test/manifest/operation-manifest-registry.spec.ts`.
   - Depends on: T037.
   - Validation: Cover exact success for `GET_QUERY_V1` and `POST_QUERY_JSON_V1`, missing/ambiguous/inactive/version mismatch, bad arguments, fixed literals, schema-bound named mappings, unrestricted expansion, and destination/method/path/query/header/body overrides.
   - Stop: Caller arguments may select only explicitly declared bounded values.
 
-- [ ] T039 [GREEN] [US3] [CONNECTOR-RUNTIME] Implement `OperationManifestRegistry` and closed request mapping.
+- [X] T039 [GREEN] [US3] [CONNECTOR-RUNTIME] Implement `OperationManifestRegistry` and closed request mapping.
   - Files: `apps/customer-connector-runtime/src/manifest/**`.
   - Depends on: T038.
   - Validation: Make T038 pass with exact immutable entries and safe failures; include generic fixture manifests for GET and Synthetic Customer B `inventory.stock-on-hand` using `POST_QUERY_JSON_V1 /inventory/stock/query`, only named `sku`, and a `credentialProfileRef`.
   - Stop: No fallback to another operation, version, service reference, or generic transport.
 
-- [ ] T040 [RED] [US3] [CONNECTOR-RUNTIME] Add failing credential-provider/profile/strategy ordering and override tests.
+- [X] T040 [RED] [US3] [CONNECTOR-RUNTIME] Add failing credential-provider/profile/strategy ordering and override tests.
   - Files: `apps/customer-connector-runtime/test/credentials/credential-profile-registry.spec.ts`, `test/credentials/credential-providers.spec.ts`, `test/manifest/execution-order.spec.ts`.
   - Depends on: T039.
   - Validation: Prove provider remains uncalled until service auth, replay/context, binding, manifest/profile/read-only/arguments pass; reject unknown/incompatible/overridden profile, handle/provider, and application strategy. Cover removable Shinmone bearer and fixture-only Customer B API-key registrations.
   - Stop: Never expose material/handle to manifest, caller, errors, health, or central code; no manifest-selected header.
 
-- [ ] T041 [GREEN] [US3] [CONNECTOR-RUNTIME] Implement registered credential providers, profiles, and fixed application strategies behind validated bindings.
+- [X] T041 [GREEN] [US3] [CONNECTOR-RUNTIME] Implement registered credential providers, profiles, and fixed application strategies behind validated bindings.
   - Files: `apps/customer-connector-runtime/src/credentials/**`, manifest execution composition.
   - Depends on: T040.
   - Validation: Make T040 pass with `CredentialProvider`, `CredentialProfileRegistry`, and `CredentialApplicationStrategy`; include provider-owned handle semantics, bearer fixture, and fixed allowlisted `X-Inventory-Key` fixture strategy without leaking material.
   - Stop: No credential-returning public interface, bearer-only generic contract, caller/header injection, Customer identity call, or generic RefreshToken support.
 
-- [ ] T042 [RED] [US3] [CONNECTOR-RUNTIME] Add failing response declaration, extraction pointer, limit, and readiness tests.
+- [X] T042 [RED] [US3] [CONNECTOR-RUNTIME] Add failing response declaration, extraction pointer, limit, and readiness tests.
   - Files: `apps/customer-connector-runtime/test/manifest/response-contract.spec.ts`, `test/health/readiness.spec.ts`.
   - Depends on: T041.
   - Validation: Cover bad JSON Pointer, unsupported/incompatible credential profile or request profile, invalid response schema, excessive limit, missing provider/strategy/manifest, and incomplete readiness.
   - Stop: Readiness cannot be true with an invalid or incomplete manifest/credential boundary.
 
-- [ ] T043 [GREEN] [US3] [CONNECTOR-RUNTIME] Complete manifest response declarations, caps, and readiness composition.
+- [X] T043 [GREEN] [US3] [CONNECTOR-RUNTIME] Complete manifest response declarations, caps, and readiness composition.
   - Files: `apps/customer-connector-runtime/src/manifest/**`, `src/health/**`.
   - Depends on: T042.
   - Validation: Make T042 pass and rerun T036, T038, and T040 suites.
   - Stop: This phase does not perform an upstream connection or release a result.
 
-- [ ] T044 [CHECKPOINT] [US3] [CONNECTOR-RUNTIME] Verify and record the Phase 5 exact-manifest gate.
+- [X] T044 [CHECKPOINT] [US3] [CONNECTOR-RUNTIME] Verify and record the Phase 5 exact-manifest gate.
   - Files: `specs/009-productized-business-connector-runtime/tasks.md` evidence only.
   - Depends on: T037, T039, T041, T043.
   - Validation: Record `MANIFEST_OPERATION_EXACT_MATCH=YES`, `CREDENTIAL_PROFILE_ISOLATION=PASS`, `CLOSED_READ_REQUEST_PROFILES=GET_QUERY_V1,POST_QUERY_JSON_V1`, and all generic URL/SQL/command/body/header gates as `NO` only after the full suite passes.
   - Stop: Phase 6 cannot start if credential resolution is reachable through an invalid request.
+
+### Phase 5 Execution Evidence — 2026-09-11
+
+The Phase 5 implementation is confined to the Customer-local runtime manifest/credential boundary. It activates no business invocation route and performs no upstream networking. Existing Phase 1–4 evidence remains unchanged.
+
+Authentic RED evidence:
+
+- T036: `npm --prefix apps/customer-connector-runtime test -- --runInBand --runTestsByPath test/manifest/manifest-loader.spec.ts` failed before production changes with `TS2307` for the missing `manifest-file.loader`; 1 suite failed, 0 tests executed.
+- T038: the focused operation-registry command failed before production changes with `TS2307` for the missing `operation-manifest.registry`; 1 suite failed, 0 tests executed.
+- T040: the three credential/profile/order suites failed before production changes with `TS2307` for the missing credential registry and execution boundary; 3 suites failed, 0 tests executed.
+- T042: response/readiness RED produced three semantic declaration failures plus the missing readiness initializer; 2 suites failed, with 3 failed and 2 passing tests.
+
+GREEN and checkpoint evidence:
+
+- T037 manifest loader: 1 suite, 23 tests passed after adding immutable read-only absolute-file loading, strict shared parsing, atomic multi-file validation, startup composition, and global exact-identity rejection.
+- T039 manifest lookup/mapping: focused manifest suites passed with exact key/version lookup, recursive input-schema validation, fixed-literal protection, and closed GET/POST-query mappings.
+- T041 credential boundary: 3 suites, 19 tests passed initially; the final execution-order suite contains 11 passing tests and composes the real exact-byte authenticator, replay service, invocation parser, binding lease, manifest validation, profile registry, provider, and strategy without registering a route.
+- T043 response/readiness: 2 suites, 13 tests passed initially; final focused configuration/operation/response validation passed 3 suites and 36 tests.
+- Full Customer-local runtime: 21 suites, 158 tests passed. The identical command required the approved local-only execution path because sandboxed Supertest socket binding returned `EPERM`; no source/test workaround was made.
+- Shared contract regression: 10 suites, 68 tests passed. Runtime build, runtime typecheck, shared build, shared typecheck, and `git diff --check` passed.
+- The read-only Spec Kit prerequisite command remained blocked by its pre-existing Feature 002 branch-selection mismatch; the accepted Feature 009 absolute path and task state were used. No implementation hooks were configured or run.
+
+Protected artifact hashes remained unchanged:
+
+```text
+FEATURE007_SPEC_SHA256=030f899f46d94d15b1357fb62de599e578a22cae5c388ddd35f57f194fa997cd
+FEATURE007_DESIGN_SHA256=22439db8e4d7154d24311e41ecdea05c22d55edca159076779024a89c33be369
+FEATURE007_PLAN_SHA256=cf3a2d5c36345eea6d61b7c26ce9cda20a4503cbc1a6b748a478fda3b0c9f9ea
+FEATURE007_TASKS_SHA256=eb6f7c4cded0e704fff9ef9e46dda7e4d6c79ab22da86502b8f33c0692b3b269
+FEATURE008_SPEC_SHA256=59fb07a7d885d8b754bc23c1e8adf89c3100fab4eee9c753381010c0822b1cce
+FEATURE008_DESIGN_SHA256=d50bb4655b94a6fcd3dc4f56baa46609bce795d91de9b812a0fbfd96eaaa83b4
+FEATURE008_PLAN_SHA256=53e32cc7a9b19a9a61304a999388758e8b288aec4197fb513e6b5de0f7772833
+FEATURE008_TASKS_SHA256=4859a4052d9510e9ee9cd8de46588eade96f0247e87c0a61b7e3b430793a6b8f
+FEATURE009_SPEC_SHA256=d73dfe52922e71f2d1481b8638fcd9cd3dadf83f5ecc1a399586cebc02a41b73
+FEATURE009_DESIGN_SHA256=250659dc2e4bef3361953b07d99fd1a37278989a4f6a71644860abc0387801a8
+FEATURE009_PLAN_SHA256=00fc5b55351f980deb063d07de555dc88213b5acf71b7e30855cade067f875c1
+PRISMA_SCHEMA_SHA256=e14673993010d994259e6a1d611c02f22b217752890abfc8b63cc812ea38d733
+SPECS_DS_STORE_SHA256=3997f3af185d3d6ac31d493a98e75ee397088b6fcf966ecee095d1264bd00e51
+TASKS_PRE_PHASE5_SHA256=dce26487a6cb122904c44a2ceea0263aba081f4963ab8ffd56e0df9012f3e0ac
+```
+
+Phase 5 checkpoint:
+
+```text
+MANIFEST_OPERATION_EXACT_MATCH=YES
+CREDENTIAL_PROFILE_ISOLATION=PASS
+CLOSED_READ_REQUEST_PROFILES=GET_QUERY_V1,POST_QUERY_JSON_V1
+ARBITRARY_URL_REPRESENTABLE=NO
+ARBITRARY_METHOD_REPRESENTABLE=NO
+ARBITRARY_HEADER_REPRESENTABLE=NO
+ARBITRARY_BODY_REPRESENTABLE=NO
+GENERIC_SQL_REPRESENTABLE=NO
+GENERIC_COMMAND_REPRESENTABLE=NO
+OPERATION_ARGUMENT_SCHEMA_VALIDATION=READY
+CREDENTIAL_PROVIDER_BEFORE_VALIDATION=NO
+CREDENTIAL_MATERIAL_PUBLICLY_RETURNED=NO
+SYNTHETIC_CUSTOMER_B_REPRESENTABLE=YES
+SHINMONE_REQUIRED_BY_GENERIC_MANIFEST=NO
+CUSTOMER_SPECIFIC_GENERIC_RUNTIME_BRANCH=NO
+GENERIC_JWT_EXPIRY_PARSE=NO
+NATIVE_CREDENTIAL_IN_GENERIC_MANIFEST=NO
+ARBITRARY_CREDENTIAL_HEADER_SELECTION=NO
+UPSTREAM_NETWORK_IMPLEMENTED=NO
+UPSTREAM_CONNECTION_ACTIVE=NO
+INVOCATION_ROUTE_ACTIVE=NO
+T001_T044_COMPLETE=YES
+PHASE5_EXECUTED=YES
+T045_EXECUTED=NO
+PHASE6_EXECUTED=NO
+FIRST_UNEXECUTED_TASK=T045
+NEXT_ACTION=EXECUTE_PHASE6
+```
+
+### Phase 5 Human-Gate Hardening — 2026-09-11
+
+Post-checkpoint human review retained T036–T044 and the original Phase 5 RED → GREEN history while requiring three focused correctness improvements. This hardening does not activate T045, the business invocation route, upstream networking, or any Phase 6 component.
+
+Authentic hardening RED evidence:
+
+- Optional request mapping: `npm --prefix apps/customer-connector-runtime test -- --runInBand --runTestsByPath test/manifest/operation-manifest-registry.spec.ts` failed against the pre-hardening `RequestProfileRegistry`; 1 suite failed with 2 failed and 17 passing tests because absent optional mappings returned `CONNECTOR_OPERATION_UNAVAILABLE` for both `GET_QUERY_V1` and `POST_QUERY_JSON_V1`.
+- Credential/downstream ownership: `npm --prefix apps/customer-connector-runtime test -- --runInBand --runTestsByPath test/credentials/credential-providers.spec.ts` failed against the pre-hardening `CredentialExecutionBoundary`; 1 suite failed with 1 failed and 4 passing tests because the downstream consumer sentinel was converted to `CONNECTOR_UPSTREAM_AUTH_FAILED`.
+
+GREEN and regression evidence:
+
+- The mapping layer now omits absent mapped arguments only after operation-specific schema validation has established that absence is legal. Required-field absence and invalid optional types still fail closed, and every declared schema property still requires an explicit closed manifest mapping.
+- The credential boundary catches only provider resolution and credential-application strategy failures. Once an `AppliedCredentialRequest` exists, the downstream consumer owns its exception, which propagates unchanged.
+- The boolean-only T040 placeholder was removed. Real `ExactRawBodyAuthenticator`, replay protection, `ConnectorBindingService`, `InMemoryConnectorBindingStore`, `OperationManifestRegistry`, `RequestProfileRegistry`, `CredentialProfileRegistry`, and `CredentialExecutionBoundary` coverage now proves missing/unknown and replaced references, provider/profile mismatch, and incomplete request-profile preparation cannot reach either credential provider.
+- The final focused command passed 3 suites and 33 tests. A first focused GREEN attempt exposed only a missing test import (`getOperation`) while the other two suites passed; correcting that test import required no production change.
+- Full Customer-local runtime: the sandboxed command reached 18 passing suites and 155 passing tests but Supertest's three socket suites were blocked by `listen EPERM`. The identical approved local-only command then passed 21 suites and 161 tests with no source/test workaround.
+- Shared contract regression passed 10 suites and 68 tests. Runtime build, runtime typecheck, shared build, shared typecheck, and `git diff --check` passed.
+- Source guards found no boolean-only ordering placeholder, network/DNS/TLS/HTTP client, invocation controller, database/Redis dependency, or new Customer-specific generic branch in the hardening scope.
+
+Protected artifact hashes remained unchanged:
+
+```text
+FEATURE007_SPEC_SHA256=030f899f46d94d15b1357fb62de599e578a22cae5c388ddd35f57f194fa997cd
+FEATURE007_DESIGN_SHA256=22439db8e4d7154d24311e41ecdea05c22d55edca159076779024a89c33be369
+FEATURE007_PLAN_SHA256=cf3a2d5c36345eea6d61b7c26ce9cda20a4503cbc1a6b748a478fda3b0c9f9ea
+FEATURE007_TASKS_SHA256=eb6f7c4cded0e704fff9ef9e46dda7e4d6c79ab22da86502b8f33c0692b3b269
+FEATURE008_SPEC_SHA256=59fb07a7d885d8b754bc23c1e8adf89c3100fab4eee9c753381010c0822b1cce
+FEATURE008_DESIGN_SHA256=d50bb4655b94a6fcd3dc4f56baa46609bce795d91de9b812a0fbfd96eaaa83b4
+FEATURE008_PLAN_SHA256=53e32cc7a9b19a9a61304a999388758e8b288aec4197fb513e6b5de0f7772833
+FEATURE008_TASKS_SHA256=4859a4052d9510e9ee9cd8de46588eade96f0247e87c0a61b7e3b430793a6b8f
+FEATURE009_SPEC_SHA256=d73dfe52922e71f2d1481b8638fcd9cd3dadf83f5ecc1a399586cebc02a41b73
+FEATURE009_DESIGN_SHA256=250659dc2e4bef3361953b07d99fd1a37278989a4f6a71644860abc0387801a8
+FEATURE009_PLAN_SHA256=00fc5b55351f980deb063d07de555dc88213b5acf71b7e30855cade067f875c1
+PRISMA_SCHEMA_SHA256=e14673993010d994259e6a1d611c02f22b217752890abfc8b63cc812ea38d733
+```
+
+Hardening-attributed changed files:
+
+```text
+apps/customer-connector-runtime/src/manifest/request-profile.registry.ts
+apps/customer-connector-runtime/src/credentials/credential-execution.boundary.ts
+apps/customer-connector-runtime/test/manifest/operation-manifest-registry.spec.ts
+apps/customer-connector-runtime/test/credentials/credential-providers.spec.ts
+apps/customer-connector-runtime/test/manifest/execution-order.spec.ts
+specs/009-productized-business-connector-runtime/tasks.md
+```
+
+Phase 5 human-gate hardening result:
+
+```text
+FEATURE009_PHASE5_HUMAN_GATE_HARDENING=PASS
+OPTIONAL_ARGUMENT_OMISSION_GET=PASS
+OPTIONAL_ARGUMENT_OMISSION_POST=PASS
+OPTIONAL_ARGUMENT_PRESENT_MAPPING=PASS
+REQUIRED_ARGUMENT_ABSENCE_REJECTED=YES
+CREDENTIAL_RESOLVE_FAILURE_OWNED_BY_CREDENTIAL_BOUNDARY=YES
+CREDENTIAL_STRATEGY_FAILURE_OWNED_BY_CREDENTIAL_BOUNDARY=YES
+DOWNSTREAM_CONSUMER_FAILURE_RECLASSIFIED_AS_AUTH=NO
+REAL_SERVICE_AUTH_ORDERING_TEST=PASS
+REAL_REPLAY_ORDERING_TEST=PASS
+REAL_CONTEXT_ORDERING_TEST=PASS
+REAL_BINDING_RESOLUTION_ORDERING_TEST=PASS
+REAL_STALE_BINDING_ORDERING_TEST=PASS
+REAL_PROVIDER_PROFILE_ORDERING_TEST=PASS
+REAL_REQUEST_PROFILE_ORDERING_TEST=PASS
+CREDENTIAL_PROVIDER_BEFORE_VALIDATION=NO
+UPSTREAM_CONNECTION_ACTIVE=NO
+INVOCATION_ROUTE_ACTIVE=NO
+T036_T044_COMPLETE=YES
+T044_REMAINS_COMPLETE=YES
+T045_EXECUTED=NO
+PHASE5_EXECUTED=YES
+PHASE6_EXECUTED=NO
+NEXT_ACTION=EXECUTE_PHASE6
+```
 
 ## Phase 6 — Safe Upstream Network, Execution, and Result Extraction
 

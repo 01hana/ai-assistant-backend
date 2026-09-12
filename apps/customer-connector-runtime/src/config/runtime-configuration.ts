@@ -1,4 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
+import { isAbsolute } from 'node:path';
+import type { CredentialProfileConfiguration } from '../credentials/credential.types';
 
 export const CONNECTOR_RUNTIME_ENVIRONMENT = Symbol('CONNECTOR_RUNTIME_ENVIRONMENT');
 
@@ -42,6 +44,8 @@ export interface ConnectorRuntimeConfiguration {
   readonly contexts: readonly RuntimeTrustedContextConfiguration[];
   readonly centralProfiles: readonly RuntimeServiceProfileConfiguration[];
   readonly bootstrapProfiles: readonly RuntimeServiceProfileConfiguration[];
+  readonly manifestFiles: readonly string[];
+  readonly credentialProfiles: readonly CredentialProfileConfiguration[];
 }
 
 export type ConnectorRuntimeConfigurationResult =
@@ -75,6 +79,7 @@ export function parseConnectorRuntimeConfiguration(environment: Record<string, u
     const contexts = parseContexts(environment.CONNECTOR_RUNTIME_CONTEXT_JSON);
     const centralProfiles = parseProfiles(environment.CONNECTOR_CENTRAL_TRUST_KEYS_JSON, 'central-invocation');
     const bootstrapProfiles = parseProfiles(environment.CONNECTOR_BINDING_BOOTSTRAP_PROFILES_JSON, 'binding-bootstrap');
+    const phase5 = parsePhase5Configuration(environment);
     validateProfileRegistry(contexts, [...centralProfiles, ...bootstrapProfiles]);
     const config: ConnectorRuntimeConfiguration = {
       processRole: 'single-replica',
@@ -84,13 +89,44 @@ export function parseConnectorRuntimeConfiguration(environment: Record<string, u
       bindingSweepBatchSize: integer(environment.CONNECTOR_BINDING_SWEEP_BATCH_SIZE, 1, 100_000),
       contexts,
       centralProfiles,
-      bootstrapProfiles
+      bootstrapProfiles,
+      manifestFiles: phase5.manifestFiles,
+      credentialProfiles: phase5.credentialProfiles
     };
     if (config.bindingScopeMaxEntries > config.bindingStoreMaxEntries || config.bindingSweepBatchSize > config.bindingStoreMaxEntries) fail();
     return Object.freeze({ ok: true, config: deepFreeze(config) });
   } catch {
     return Object.freeze({ ok: false, category: 'invalid_configuration' });
   }
+}
+
+function parsePhase5Configuration(environment: Record<string, unknown>): Readonly<{
+  manifestFiles: readonly string[];
+  credentialProfiles: readonly CredentialProfileConfiguration[];
+}> {
+  const rawFiles = environment.CONNECTOR_MANIFEST_FILES;
+  const rawProfiles = environment.CONNECTOR_CREDENTIAL_PROFILES_JSON;
+  if (rawFiles === undefined && rawProfiles === undefined) return Object.freeze({ manifestFiles: Object.freeze([]), credentialProfiles: Object.freeze([]) });
+  if (rawFiles === undefined || rawProfiles === undefined) fail();
+  const files = json(rawFiles);
+  const profiles = json(rawProfiles);
+  if (!Array.isArray(files) || files.length < 1 || files.length > 100 ||
+      !files.every((path) => typeof path === 'string' && isAbsolute(path)) || new Set(files).size !== files.length ||
+      !Array.isArray(profiles) || profiles.length < 1 || profiles.length > 100) fail();
+  const parsedProfiles = profiles.map((profile) => {
+    if (!objectWithKeys(profile, ['credentialProfileRef', 'credentialProviderKey', 'applicationStrategyKey', 'credentialKind'], [])) fail();
+    for (const name of ['credentialProfileRef', 'credentialProviderKey', 'applicationStrategyKey', 'credentialKind']) {
+      if (!identifier(profile[name])) fail();
+    }
+    return Object.freeze({
+      credentialProfileRef: profile.credentialProfileRef as string,
+      credentialProviderKey: profile.credentialProviderKey as string,
+      applicationStrategyKey: profile.applicationStrategyKey as string,
+      credentialKind: profile.credentialKind as string
+    });
+  });
+  if (new Set(parsedProfiles.map((profile) => profile.credentialProfileRef)).size !== parsedProfiles.length) fail();
+  return deepFreeze({ manifestFiles: files as string[], credentialProfiles: parsedProfiles });
 }
 
 function parseContexts(value: unknown): readonly RuntimeTrustedContextConfiguration[] {

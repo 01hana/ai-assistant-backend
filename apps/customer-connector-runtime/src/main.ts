@@ -3,12 +3,14 @@ import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CustomerConnectorRuntimeModule } from './customer-connector-runtime.module';
 import type { BindingBootstrapProvider } from './bindings/binding-bootstrap-provider';
+import type { Phase5RuntimeRegistrations } from './customer-connector-runtime.module';
 
 export async function createCustomerConnectorRuntimeApplication(
   environment: Record<string, unknown> = process.env,
-  bootstrapProviders: readonly BindingBootstrapProvider[] = []
+  bootstrapProviders: readonly BindingBootstrapProvider[] = [],
+  phase5: Phase5RuntimeRegistrations = {}
 ): Promise<INestApplication> {
-  return NestFactory.create(CustomerConnectorRuntimeModule.forEnvironment(environment, bootstrapProviders), {
+  return NestFactory.create(CustomerConnectorRuntimeModule.forEnvironment(environment, bootstrapProviders, phase5), {
     bufferLogs: true,
     bodyParser: false
   });

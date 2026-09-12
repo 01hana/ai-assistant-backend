@@ -3,6 +3,7 @@ import { ConnectorRuntimeConfigService } from '../../src/config/runtime-configur
 import { validRuntimeEnvironment } from '../fixtures/runtime-environment';
 import { Phase3ReadinessInitializer } from '../../src/health/phase3-readiness.initializer';
 import { ReplayProtectionService } from '../../src/replay/replay-protection.service';
+import { ManifestBoundaryReadinessInitializer } from '../../src/manifest/manifest-boundary-readiness.initializer';
 
 describe('Customer Connector Runtime health and readiness', () => {
   it('keeps public readiness fail-closed after only foundational capabilities are available', () => {
@@ -55,6 +56,40 @@ describe('Customer Connector Runtime health and readiness', () => {
     });
     expect(new RuntimeReadinessService(config, registry).getPublicReadiness()).toMatchObject({
       status: 'not_ready', productionReady: false
+    });
+  });
+
+  it.each([
+    ['missing manifest', false, true, true],
+    ['incomplete credential registry', true, false, true],
+    ['incomplete request-profile registry', true, true, false],
+    ['partially valid manifest registry', false, false, true]
+  ])('keeps readiness false for %s', async (_case, manifestValid, credentialsValid, profilesValid) => {
+    const registry = new RuntimeReadinessRegistry();
+    const initializer = new ManifestBoundaryReadinessInitializer(
+      registry,
+      { isValid: manifestValid, credentialProfileRefs: () => ['credential-v1'] } as never,
+      { isValid: credentialsValid, has: () => credentialsValid } as never,
+      { isValid: profilesValid } as never
+    );
+    await initializer.onModuleInit();
+    expect(registry.snapshot()).toMatchObject({
+      manifest: false, credentialProfiles: credentialsValid, requestProfiles: profilesValid,
+      upstream: false, invocationRoute: false
+    });
+  });
+
+  it('marks the Phase 5 boundary dependencies only after complete compatibility validation', async () => {
+    const registry = new RuntimeReadinessRegistry();
+    await new ManifestBoundaryReadinessInitializer(
+      registry,
+      { isValid: true, credentialProfileRefs: () => ['credential-v1'] } as never,
+      { isValid: true, has: (value: string) => value === 'credential-v1' } as never,
+      { isValid: true } as never
+    ).onModuleInit();
+    expect(registry.snapshot()).toMatchObject({
+      manifest: true, credentialProfiles: true, requestProfiles: true,
+      upstream: false, invocationRoute: false
     });
   });
 });
